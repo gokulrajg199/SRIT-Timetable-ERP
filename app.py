@@ -248,18 +248,19 @@ def subject_label_df(section_id=None):
     return query_df("SELECT id, subject_code || ' - ' || subject_name AS label FROM subjects ORDER BY subject_name")
 
 
+from pathlib import Path
+
 def header():
-    st.markdown("""
-    <div style='text-align:center; margin-top:-20px; margin-bottom:10px;'>
-    """, unsafe_allow_html=True)
+    banner_file = Path("college_banner.png")
 
-    col1, col2, col3 = st.columns([1,8,1])
+    if banner_file.exists():
+        col1, col2, col3 = st.columns([1, 8, 1])
 
-    with col2:
-        st.image("college_banner.png", width=1000)
+        with col2:
+            st.image(str(banner_file), width=900)
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
+    else:
+        st.title("SRIT Academic Resource Management System")
 
 def login_page():
     header()
