@@ -251,14 +251,13 @@ def subject_label_df(section_id=None):
 from pathlib import Path
 
 def header():
-    banner_file = Path("college_banner.png")
+    banner_file = Path("College_banner.png")
 
     if banner_file.exists():
         col1, col2, col3 = st.columns([1, 8, 1])
-
         with col2:
             st.image(str(banner_file), width=900)
-
+  
     else:
         st.title("SRIT Academic Resource Management System")
 
