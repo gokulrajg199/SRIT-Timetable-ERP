@@ -689,7 +689,7 @@ def sidebar_menu():
             "Dashboard", "Faculty", "Sections", "Infrastructure",
             "Subjects & Constraints", "Generate Timetable", "Manual Entry",
             "Delete / Reset", "View / Export", "Clash Intelligence",
-            "Faculty Workload", "Settings"
+            "Faculty Workload", "Edit Records", "Settings"
         ])
         if st.button("Logout", use_container_width=True):
             st.session_state.logged_in = False
@@ -1259,7 +1259,148 @@ def workload_page():
     """)
 
     st.dataframe(workload, use_container_width=True, hide_index=True)
+    
+def edit_records_page():
+    header()
+    st.subheader("Edit Records")
 
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Edit Faculty",
+        "Edit Subject",
+        "Edit Section",
+        "Edit Infrastructure",
+        "Edit Timetable Entry"
+    ])
+
+    with tab1:
+        df = query_df("SELECT * FROM faculty ORDER BY name")
+        if df.empty:
+            st.info("No faculty found.")
+        else:
+            selected = st.selectbox("Select Faculty", df["name"].tolist(), key="edit_faculty_select")
+            row = df[df["name"] == selected].iloc[0]
+
+            name = st.text_input("Faculty Name", row["name"], key="edit_faculty_name")
+            designation = st.text_input("Designation", row["designation"], key="edit_faculty_designation")
+            department = st.text_input("Department", row["department"], key="edit_faculty_department")
+            max_hours = st.number_input("Max Hours", 1, 40, int(row["max_hours"]), key="edit_faculty_max")
+
+            if st.button("Update Faculty"):
+                execute(
+                    "UPDATE faculty SET name=?, designation=?, department=?, max_hours=? WHERE id=?",
+                    (name, designation, department, max_hours, int(row["id"]))
+                )
+                st.success("Faculty updated.")
+                st.rerun()
+
+    with tab2:
+        df = query_df("SELECT id, subject_code, subject_name, subject_type, weekly_hours, theory_hours, lab_hours FROM subjects ORDER BY subject_name")
+        if df.empty:
+            st.info("No subjects found.")
+        else:
+            search = st.text_input("Search Subject", key="search_subject_edit")
+            if search:
+                df = df[df["subject_name"].str.contains(search, case=False, na=False)]
+
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            sid = st.number_input("Enter Subject ID to Edit", 1, 99999, key="edit_subject_id")
+            rowdf = query_df("SELECT * FROM subjects WHERE id=?", (sid,))
+            if not rowdf.empty:
+                row = rowdf.iloc[0]
+
+                subject_code = st.text_input("Subject Code", row["subject_code"], key="edit_sub_code")
+                subject_name = st.text_input("Subject Name", row["subject_name"], key="edit_sub_name")
+                subject_type = st.selectbox(
+                    "Subject Type",
+                    ["Theory", "Lab", "Theory + Lab", "Practical"],
+                    index=["Theory", "Lab", "Theory + Lab", "Practical"].index(row["subject_type"]) if row["subject_type"] in ["Theory", "Lab", "Theory + Lab", "Practical"] else 0,
+                    key="edit_sub_type"
+                )
+                theory_hours = st.number_input("Theory Hours", 0, 10, int(row["theory_hours"]), key="edit_theory_hours")
+                lab_hours = st.number_input("Lab Hours", 0, 10, int(row["lab_hours"]), key="edit_lab_hours")
+                weekly_hours = theory_hours + lab_hours if subject_type == "Theory + Lab" else int(row["weekly_hours"])
+
+                if st.button("Update Subject"):
+                    execute(
+                        "UPDATE subjects SET subject_code=?, subject_name=?, subject_type=?, weekly_hours=?, theory_hours=?, lab_hours=? WHERE id=?",
+                        (subject_code, subject_name, subject_type, weekly_hours, theory_hours, lab_hours, sid)
+                    )
+                    st.success("Subject updated.")
+                    st.rerun()
+
+    with tab3:
+        df = query_df("SELECT * FROM sections ORDER BY year, department, semester, section")
+        if df.empty:
+            st.info("No sections found.")
+        else:
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            section_id = st.number_input("Enter Section ID to Edit", 1, 99999, key="edit_section_id")
+            rowdf = query_df("SELECT * FROM sections WHERE id=?", (section_id,))
+            if not rowdf.empty:
+                row = rowdf.iloc[0]
+
+                year = st.selectbox("Year", ["1st Year", "2nd Year", "3rd Year", "4th Year"], key="edit_year")
+                department = st.text_input("Department", row["department"], key="edit_sec_dept")
+                semester = st.text_input("Semester", row["semester"], key="edit_sec_sem")
+                section = st.text_input("Section", row["section"], key="edit_sec_section")
+                working_days = st.selectbox("Working Days", [5, 6], index=1, key="edit_working_days")
+
+                if st.button("Update Section"):
+                    execute(
+                        "UPDATE sections SET year=?, department=?, semester=?, section=?, working_days=? WHERE id=?",
+                        (year, department, semester, section, working_days, section_id)
+                    )
+                    st.success("Section updated.")
+                    st.rerun()
+
+    with tab4:
+        df = query_df("SELECT * FROM rooms ORDER BY room_type, room_name")
+        if df.empty:
+            st.info("No infrastructure found.")
+        else:
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            room_id = st.number_input("Enter Room/Lab ID to Edit", 1, 99999, key="edit_room_id")
+            rowdf = query_df("SELECT * FROM rooms WHERE id=?", (room_id,))
+            if not rowdf.empty:
+                row = rowdf.iloc[0]
+
+                room_name = st.text_input("Room / Lab Name", row["room_name"], key="edit_room_name")
+                room_type = st.selectbox("Type", ["Classroom", "Lab", "Seminar Hall", "Smart Classroom", "Other"], key="edit_room_type")
+                capacity = st.number_input("Capacity", 1, 300, int(row["capacity"]), key="edit_room_capacity")
+                equipment = st.text_input("Equipment", row["equipment"], key="edit_room_equipment")
+
+                if st.button("Update Infrastructure"):
+                    execute(
+                        "UPDATE rooms SET room_name=?, room_type=?, capacity=?, equipment=? WHERE id=?",
+                        (room_name, room_type, capacity, equipment, room_id)
+                    )
+                    st.success("Infrastructure updated.")
+                    st.rerun()
+
+    with tab5:
+        df = timetable_detail()
+        if df.empty:
+            st.info("No timetable entries found.")
+        else:
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            timetable_id = st.number_input("Enter Timetable ID to Edit", 1, 99999, key="edit_tt_id")
+            rowdf = query_df("SELECT * FROM timetable WHERE id=?", (timetable_id,))
+            if not rowdf.empty:
+                row = rowdf.iloc[0]
+
+                day = st.selectbox("Day", DAYS, key="edit_tt_day")
+                period = st.selectbox("Period", [p for p, _ in PERIODS], key="edit_tt_period")
+                session_type = st.selectbox("Session Type", ["Theory", "Lab", "Practical", "Other"], key="edit_tt_type")
+
+                if st.button("Update Timetable Entry"):
+                    execute(
+                        "UPDATE timetable SET day=?, period=?, timing=?, session_type=? WHERE id=?",
+                        (day, period, PERIOD_DICT[period], session_type, timetable_id)
+                    )
+                    st.success("Timetable entry updated.")
+                    st.rerun()
 
 def settings_page():
     header()
@@ -1279,6 +1420,18 @@ def settings_page():
             execute(f"DELETE FROM {table}")
         st.warning("All data cleared.")
 
+    # DATABASE BACKUP
+    st.markdown("### Database Backup")
+
+    if Path("timetable.db").exists():
+        with open("timetable.db", "rb") as f:
+            st.download_button(
+                "Download Backup",
+                data=f,
+                file_name="timetable_backup.db",
+                mime="application/octet-stream",
+                use_container_width=True
+            )
 
 def main_app():
     page = sidebar_menu()
@@ -1304,9 +1457,30 @@ def main_app():
     elif page == "Clash Intelligence":
         clash_page()
     elif page == "Faculty Workload":
-        workload_page()
+    workload_page()
+
+    elif page == "Edit Records":
+    edit_records_page()
+
     elif page == "Settings":
-        settings_page()
+    settings_page()
+
+    # FOOTER
+    st.markdown("""
+    <hr style='border:1px solid #d4af37;'>
+
+    <div style='text-align:center;
+                color:#0b5d2a;
+                font-size:14px;
+                padding:10px;'>
+
+    <b>SRIT Academic Resource Management System (SARMS)</b><br>
+    Academic Year 2026–2027<br>
+    Developed by Department of Computer Science and Engineering<br>
+    Sri Ramakrishna Institute of Technology, Coimbatore
+
+    </div>
+    """, unsafe_allow_html=True)
 
 
 init_db()
