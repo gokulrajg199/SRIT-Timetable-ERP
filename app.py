@@ -924,27 +924,27 @@ def dashboard_page():
     k2.metric("Room/Lab Clashes", room_clashes)
     k3.metric("Class Clashes", section_clashes)
 
-   st.markdown("### ⏱ SRIT Academic Time Grid")
+       st.markdown("### ⏱ SRIT Academic Time Grid")
 
-html_table = """
-<table style="width:100%; border-collapse:collapse; text-align:center; font-size:18px;">
-    <tr style="background:#1b5e20; color:white;">
-        <th>PERIOD</th>
-        <th>TIMING</th>
-    </tr>
-"""
-
-for period, timing in PERIODS:
-    html_table += f"""
-    <tr>
-        <td><b>{period}</b></td>
-        <td><b>{timing}</b></td>
-    </tr>
+    html_table = """
+    <table style="width:100%; border-collapse:collapse; text-align:center; font-size:18px;">
+        <tr style="background:#1b5e20; color:white;">
+            <th style="padding:12px; text-align:center;">PERIOD</th>
+            <th style="padding:12px; text-align:center;">TIMING</th>
+        </tr>
     """
 
-html_table += "</table>"
+    for period, timing in PERIODS:
+        html_table += f"""
+        <tr>
+            <td style="padding:12px; text-align:center; font-weight:bold;">{period}</td>
+            <td style="padding:12px; text-align:center;">{timing}</td>
+        </tr>
+        """
 
-st.markdown(html_table, unsafe_allow_html=True)
+    html_table += "</table>"
+
+    st.markdown(html_table, unsafe_allow_html=True)
 
     st.markdown(
         """
