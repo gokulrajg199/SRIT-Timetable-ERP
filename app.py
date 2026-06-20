@@ -955,7 +955,7 @@ st.dataframe(
     use_container_width=True,
     hide_index=True
 )
-        st.markdown(
+st.markdown(
         """
         <div class='success-box'>
         Advanced rules enabled:
