@@ -200,6 +200,7 @@ def init_db():
     add_col("subjects", "lab_hours", "INTEGER DEFAULT 0")
     add_col("subjects", "theory_continuous_required", "INTEGER DEFAULT 0")
     add_col("subjects", "theory_continuous_hours", "INTEGER DEFAULT 1")
+    add_col("subjects", "same_day_theory", "INTEGER DEFAULT 0")
     add_col("subjects", "lab_continuous_required", "INTEGER DEFAULT 1")
     add_col("subjects", "lab_continuous_hours", "INTEGER DEFAULT 4")
     add_col("subjects", "lab_faculty_id", "INTEGER")
@@ -842,7 +843,6 @@ def subjects_page():
         st.warning("Add faculty and sections first.")
         return
 
-    # IMPORTANT: This is outside the form, so it refreshes immediately when changed.
     subject_type = st.selectbox(
         "Subject Type",
         ["Theory", "Lab", "Theory + Lab", "Practical"],
@@ -856,6 +856,7 @@ def subjects_page():
         section_name = st.selectbox("Which Class / Section?", sdf["label"].tolist())
         section_id = int(sdf[sdf["label"] == section_name]["id"].iloc[0])
 
+        same_day_theory = False
         theory_hours = 0
         lab_hours = 0
         weekly_hours = 0
@@ -870,9 +871,16 @@ def subjects_page():
             theory_hours = st.number_input("Theory Hours / Week", 1, 10, 3)
             weekly_hours = theory_hours
 
+            same_day_theory = st.checkbox("Schedule All Theory Hours On Same Day?")
             theory_cont = st.checkbox("Theory Continuous Period Required?")
+
             if theory_cont:
-                theory_cont_hours = st.number_input("How many continuous theory periods?", 1, 8, 2)
+                theory_cont_hours = st.number_input(
+                    "How many continuous theory periods?",
+                    2,
+                    8,
+                    2
+                )
 
         elif subject_type in ["Lab", "Practical"]:
             lab_hours = st.number_input("Lab Hours / Week", 1, 10, 4)
@@ -880,21 +888,39 @@ def subjects_page():
 
             st.info("Lab continuous period is mandatory.")
             lab_cont = True
-            lab_cont_hours = st.number_input("How many continuous lab periods?", 1, 8, lab_hours)
+            lab_cont_hours = st.number_input(
+                "How many continuous lab periods?",
+                1,
+                8,
+                lab_hours
+            )
 
         elif subject_type == "Theory + Lab":
             c1, c2 = st.columns(2)
+
             theory_hours = c1.number_input("Theory Hours / Week", 1, 10, 2)
             lab_hours = c2.number_input("Lab Hours / Week", 1, 10, 2)
             weekly_hours = theory_hours + lab_hours
 
+            same_day_theory = st.checkbox("Schedule All Theory Hours On Same Day?")
             theory_cont = st.checkbox("Theory Continuous Period Required?")
+
             if theory_cont:
-                theory_cont_hours = st.number_input("How many continuous theory periods?", 1, 8, 2)
+                theory_cont_hours = st.number_input(
+                    "How many continuous theory periods?",
+                    2,
+                    8,
+                    2
+                )
 
             st.info("Lab continuous period is mandatory for Theory + Lab.")
             lab_cont = True
-            lab_cont_hours = st.number_input("How many continuous lab periods?", 1, 8, lab_hours)
+            lab_cont_hours = st.number_input(
+                "How many continuous lab periods?",
+                1,
+                8,
+                lab_hours
+            )
 
         st.markdown("### Faculty and Room / Lab Mapping")
 
@@ -908,6 +934,7 @@ def subjects_page():
 
         room_options = ["None"] + (class_rdf["room_name"].tolist() if not class_rdf.empty else rdf["room_name"].tolist())
         room_name = st.selectbox("Which Classroom?", room_options)
+
         room_id = None
         if room_name != "None":
             all_rooms = rooms_df()
@@ -917,6 +944,7 @@ def subjects_page():
         if subject_type in ["Lab", "Theory + Lab", "Practical"]:
             lab_options = ["None"] + (lab_rdf["room_name"].tolist() if not lab_rdf.empty else rdf["room_name"].tolist())
             lab_room_name = st.selectbox("Which Lab?", lab_options)
+
             if lab_room_name != "None":
                 all_rooms = rooms_df()
                 lab_room_id = int(all_rooms[all_rooms["room_name"] == lab_room_name]["id"].iloc[0])
@@ -927,23 +955,29 @@ def subjects_page():
                     subject_code, subject_name, subject_type, weekly_hours,
                     theory_hours, lab_hours,
                     theory_continuous_required, theory_continuous_hours,
+                    same_day_theory,
                     lab_continuous_required, lab_continuous_hours,
                     faculty_id, lab_faculty_id, section_id, room_id, lab_room_id
                 )
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 code, subject_name, subject_type, weekly_hours,
                 theory_hours, lab_hours,
-                1 if theory_cont else 0, int(theory_cont_hours),
-                1 if lab_cont else 0, int(lab_cont_hours),
+                1 if theory_cont else 0,
+                int(theory_cont_hours),
+                1 if same_day_theory else 0,
+                1 if lab_cont else 0,
+                int(lab_cont_hours),
                 faculty_id, lab_faculty_id, section_id, room_id, lab_room_id
             ))
+
             st.success("Subject and constraints saved.")
 
     st.dataframe(query_df("""
         SELECT s.id, s.subject_code, s.subject_name, s.subject_type,
                s.weekly_hours, s.theory_hours, s.lab_hours,
                s.theory_continuous_required, s.theory_continuous_hours,
+               s.same_day_theory,
                s.lab_continuous_required, s.lab_continuous_hours,
                f.name AS theory_faculty, lf.name AS lab_faculty,
                sec.year, sec.department, sec.semester, sec.section,
@@ -956,7 +990,6 @@ def subjects_page():
         LEFT JOIN rooms lr ON s.lab_room_id=lr.id
         ORDER BY sec.year, sec.department, sec.semester, sec.section, s.subject_name
     """), use_container_width=True, hide_index=True)
-
 
 def manual_entry_page():
     header()
