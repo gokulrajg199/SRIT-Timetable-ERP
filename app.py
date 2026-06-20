@@ -872,14 +872,13 @@ def sidebar_menu():
 
 
 def dashboard_page():
-header()
+    header()
 
-```
-faculty_clashes, room_clashes, section_clashes = compute_clash_counts()
-total_clashes = faculty_clashes + room_clashes + section_clashes
+    faculty_clashes, room_clashes, section_clashes = compute_clash_counts()
+    total_clashes = faculty_clashes + room_clashes + section_clashes
 
-c1, c2, c3, c4 = st.columns(4)
-c5, c6, c7, c8 = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
+    c5, c6, c7, c8 = st.columns(4)
 
 c1.metric("👨‍🏫 Faculty", len(query_df("SELECT id FROM faculty")))
 c2.metric("🏫 Sections", len(query_df("SELECT id FROM sections")))
