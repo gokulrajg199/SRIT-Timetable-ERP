@@ -953,33 +953,6 @@ st.markdown(
 )
 ```
 
-st.markdown("""
-<style>
-div[data-testid="stDataFrame"] table {
-    font-size: 22px !important;
-    font-weight: bold !important;
-}
-
-div[data-testid="stDataFrame"] th {
-    text-align: center !important;
-    font-size: 24px !important;
-    background-color: #1b5e20 !important;
-    color: white !important;
-}
-
-div[data-testid="stDataFrame"] td {
-    text-align: center !important;
-    font-size: 20px !important;
-    font-weight: 600 !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.dataframe(
-    time_grid,
-    use_container_width=True,
-    hide_index=True
-)
 
 def faculty_page():
     header()
