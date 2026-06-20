@@ -919,13 +919,18 @@ def dashboard_page():
     k1.metric("Faculty Clashes", faculty_clashes)
     k2.metric("Room/Lab Clashes", room_clashes)
     k3.metric("Class Clashes", section_clashes)
+    st.subheader("⏱ SRIT Academic Time Grid")
 
-   st.subheader("⏱ SRIT Academic Time Grid")
+    time_grid = pd.DataFrame(
+        PERIODS,
+        columns=["PERIOD", "TIMING"]
+    )
 
-time_grid = pd.DataFrame(
-    PERIODS,
-    columns=["PERIOD", "TIMING"]
-)
+    st.dataframe(
+        time_grid,
+        use_container_width=True,
+        hide_index=True
+    )
 
 st.markdown("""
 <style>
