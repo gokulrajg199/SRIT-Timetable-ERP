@@ -17,7 +17,27 @@ except Exception:
     REPORTLAB_AVAILABLE = False
 
 DB_NAME = "timetable.db"
+    st.markdown("### ⏱ SRIT Academic Time Grid")
 
+    html_table = """
+    <table style="width:100%; border-collapse:collapse; text-align:center; font-size:18px;">
+        <tr style="background:#1b5e20; color:white;">
+            <th style="padding:12px; text-align:center;">PERIOD</th>
+            <th style="padding:12px; text-align:center;">TIMING</th>
+        </tr>
+    """
+
+    for period, timing in PERIODS:
+        html_table += f"""
+        <tr>
+            <td style="padding:12px; text-align:center; font-weight:bold;">{period}</td>
+            <td style="padding:12px; text-align:center;">{timing}</td>
+        </tr>
+        """
+
+    html_table += "</table>"
+
+    st.markdown(html_table, unsafe_allow_html=True)
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 PERIODS = [
     (1, "08:50 AM - 09:40 AM"),
