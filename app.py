@@ -927,8 +927,13 @@ k3.metric("Class Clashes", section_clashes)
 
 st.subheader("⏱ SRIT Academic Time Grid")
 
+time_grid = pd.DataFrame(
+    PERIODS,
+    columns=["PERIOD", "TIMING"]
+)
+
 st.dataframe(
-    pd.DataFrame(PERIODS, columns=["PERIOD", "TIMING"]),
+    time_grid,
     use_container_width=True,
     hide_index=True
 )
