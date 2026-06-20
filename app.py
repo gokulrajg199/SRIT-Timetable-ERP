@@ -39,40 +39,213 @@ st.set_page_config(
 
 CUSTOM_CSS = """
 <style>
-.stApp{background:#f4fbf6;color:#111111;}
+
+/* GLOBAL FONT */
+html, body, [class*="css"]{
+    font-size:18px !important;
+    font-weight:500 !important;
+}
+
+/* APP BACKGROUND */
+.stApp{
+    background:#f4fbf6;
+    color:#111111;
+}
+
+/* HEADER */
 .main-header{
     background:linear-gradient(135deg,#1b5e20,#2e7d32,#43a047);
-    color:white !important;padding:24px;border-radius:18px;
-    border:3px solid #d4af37;box-shadow:0px 5px 20px rgba(0,0,0,0.18);
-    text-align:center;margin-bottom:20px;
+    color:white !important;
+    padding:24px;
+    border-radius:18px;
+    border:3px solid #d4af37;
+    box-shadow:0px 5px 20px rgba(0,0,0,0.18);
+    text-align:center;
+    margin-bottom:20px;
 }
-.main-header h1,.main-header h2,.main-header h3,.main-header h4,.main-header p{
-    color:white !important;margin:4px;
+
+.main-header h1{
+    font-size:42px !important;
+    font-weight:800 !important;
 }
-section[data-testid="stSidebar"]{background:#1b5e20;}
-section[data-testid="stSidebar"] *{color:white !important;}
+
+.main-header h2{
+    font-size:34px !important;
+    font-weight:700 !important;
+}
+
+.main-header h3,
+.main-header h4,
+.main-header p{
+    color:white !important;
+    margin:4px;
+    font-size:22px !important;
+}
+
+/* SIDEBAR */
+section[data-testid="stSidebar"]{
+    background:#1b5e20;
+}
+
+section[data-testid="stSidebar"] *{
+    color:white !important;
+    font-size:18px !important;
+    font-weight:600 !important;
+}
+
+/* PAGE TITLES */
+h1{
+    font-size:40px !important;
+    font-weight:800 !important;
+    color:#1b5e20 !important;
+}
+
+h2{
+    font-size:34px !important;
+    font-weight:700 !important;
+    color:#1b5e20 !important;
+}
+
+h3{
+    font-size:28px !important;
+    font-weight:700 !important;
+    color:#1b5e20 !important;
+}
+
+/* LABELS */
+label{
+    font-size:18px !important;
+    font-weight:600 !important;
+}
+
+/* METRICS */
 div[data-testid="stMetric"]{
-    background:white;border:2px solid #d4af37;border-left:7px solid #d4af37;
-    border-radius:14px;padding:15px;box-shadow:0px 3px 12px rgba(0,0,0,0.08);
+    background:white;
+    border:2px solid #d4af37;
+    border-left:7px solid #d4af37;
+    border-radius:14px;
+    padding:15px;
+    box-shadow:0px 3px 12px rgba(0,0,0,0.08);
 }
+
+div[data-testid="stMetric"] label{
+    font-size:18px !important;
+    font-weight:700 !important;
+}
+
+div[data-testid="stMetricValue"]{
+    font-size:32px !important;
+    font-weight:800 !important;
+}
+
+/* BUTTONS */
 .stButton button{
     background:linear-gradient(135deg,#2e7d32,#43a047);
-    color:white !important;border:2px solid #d4af37;border-radius:10px;font-weight:bold;
+    color:white !important;
+    border:2px solid #d4af37;
+    border-radius:10px;
+    font-weight:bold;
+    font-size:18px !important;
 }
-.stDownloadButton button{background:#d4af37;color:#111111 !important;border-radius:10px;font-weight:bold;}
-.success-box{background:#e8f5e9;color:#1b5e20;padding:12px;border-radius:10px;border-left:5px solid #2e7d32;}
-.warning-box{background:#fff8e1;color:#7a5800;padding:12px;border-radius:10px;border-left:5px solid #d4af37;}
-.card{background:white;border:2px solid #d4af37;border-radius:16px;padding:18px;box-shadow:0px 3px 12px rgba(0,0,0,0.08);margin-bottom:14px;}
 
-.metric-icon{font-size:28px;font-weight:800;color:#1b5e20;}
-.theory-cell{background:#e3f2fd;color:#0d47a1;}
-.lab-cell{background:#e8f5e9;color:#1b5e20;}
-.practical-cell{background:#fff3e0;color:#e65100;}
-.manual-cell{background:#fff8e1;color:#7a5800;}
+.stDownloadButton button{
+    background:#d4af37;
+    color:#111111 !important;
+    border-radius:10px;
+    font-weight:bold;
+    font-size:18px !important;
+}
+
+/* INPUT BOXES */
+input{
+    font-size:18px !important;
+    font-weight:600 !important;
+}
+
+/* SELECT BOX */
+div[data-baseweb="select"]{
+    font-size:18px !important;
+}
+
+/* DATAFRAMES */
+div[data-testid="stDataFrame"] table{
+    font-size:20px !important;
+    font-weight:600 !important;
+}
+
+div[data-testid="stDataFrame"] th{
+    text-align:center !important;
+    font-size:22px !important;
+    font-weight:800 !important;
+    background:#1b5e20 !important;
+    color:white !important;
+}
+
+div[data-testid="stDataFrame"] td{
+    text-align:center !important;
+    font-size:18px !important;
+    font-weight:600 !important;
+}
+
+/* CARDS */
+.card{
+    background:white;
+    border:2px solid #d4af37;
+    border-radius:16px;
+    padding:18px;
+    box-shadow:0px 3px 12px rgba(0,0,0,0.08);
+    margin-bottom:14px;
+}
+
+/* INFO BOX */
+.success-box{
+    background:#e8f5e9;
+    color:#1b5e20;
+    padding:12px;
+    border-radius:10px;
+    border-left:5px solid #2e7d32;
+    font-size:18px;
+}
+
+.warning-box{
+    background:#fff8e1;
+    color:#7a5800;
+    padding:12px;
+    border-radius:10px;
+    border-left:5px solid #d4af37;
+    font-size:18px;
+}
+
+/* TIMETABLE COLORS */
+.metric-icon{
+    font-size:28px;
+    font-weight:800;
+    color:#1b5e20;
+}
+
+.theory-cell{
+    background:#e3f2fd;
+    color:#0d47a1;
+}
+
+.lab-cell{
+    background:#e8f5e9;
+    color:#1b5e20;
+}
+
+.practical-cell{
+    background:#fff3e0;
+    color:#e65100;
+}
+
+.manual-cell{
+    background:#fff8e1;
+    color:#7a5800;
+}
+
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
 
 def connect_db():
     return sqlite3.connect(DB_NAME, check_same_thread=False)
@@ -747,17 +920,40 @@ def dashboard_page():
     k2.metric("Room/Lab Clashes", room_clashes)
     k3.metric("Class Clashes", section_clashes)
 
-    st.subheader("⏱ SRIT Academic Time Grid")
-    st.dataframe(pd.DataFrame(PERIODS, columns=["Period", "Timing"]), use_container_width=True, hide_index=True)
+   st.subheader("⏱ SRIT Academic Time Grid")
 
-    st.markdown("""
-    <div class='success-box'>
-    Advanced rules enabled: Faculty theory max 3/day across all subjects, lab max 4/day,
-    only one lab per faculty/day, if lab exists theory max 2/day, no same subject theory and lab on same day,
-    same theory subject max 2/day.
-    </div>
-    """, unsafe_allow_html=True)
+time_grid = pd.DataFrame(
+    PERIODS,
+    columns=["PERIOD", "TIMING"]
+)
 
+st.markdown("""
+<style>
+div[data-testid="stDataFrame"] table {
+    font-size: 22px !important;
+    font-weight: bold !important;
+}
+
+div[data-testid="stDataFrame"] th {
+    text-align: center !important;
+    font-size: 24px !important;
+    background-color: #1b5e20 !important;
+    color: white !important;
+}
+
+div[data-testid="stDataFrame"] td {
+    text-align: center !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.dataframe(
+    time_grid,
+    use_container_width=True,
+    hide_index=True
+)
 
 def faculty_page():
     header()
