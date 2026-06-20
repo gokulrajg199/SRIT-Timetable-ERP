@@ -17,27 +17,7 @@ except Exception:
     REPORTLAB_AVAILABLE = False
 
 DB_NAME = "timetable.db"
-       st.markdown("### ⏱ SRIT Academic Time Grid")
 
-    html_table = """
-    <table style="width:100%; border-collapse:collapse; text-align:center; font-size:18px;">
-        <tr style="background:#1b5e20; color:white;">
-            <th style="padding:12px; text-align:center;">PERIOD</th>
-            <th style="padding:12px; text-align:center;">TIMING</th>
-        </tr>
-    """
-
-    for period, timing in PERIODS:
-        html_table += f"""
-        <tr>
-            <td style="padding:12px; text-align:center; font-weight:bold;">{period}</td>
-            <td style="padding:12px; text-align:center;">{timing}</td>
-        </tr>
-        """
-
-    html_table += "</table>"
-
-    st.markdown(html_table, unsafe_allow_html=True)
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 PERIODS = [
     (1, "08:50 AM - 09:40 AM"),
@@ -939,6 +919,36 @@ def dashboard_page():
 
     st.subheader("⚠ Clash Summary Dashboard")
 
+    k1, k2, k3 = st.columns(3)
+    k1.metric("Faculty Clashes", faculty_clashes)
+    k2.metric("Room/Lab Clashes", room_clashes)
+    k3.metric("Class Clashes", section_clashes)
+
+    st.markdown("### ⏱ SRIT Academic Time Grid")
+
+    html_table = """
+    <div style="display:flex; justify-content:center; width:100%;">
+        <table style="width:75%; border-collapse:collapse; text-align:center; font-size:20px; background:white;">
+            <tr style="background:#1b5e20; color:white;">
+                <th style="padding:14px; text-align:center; border:1px solid #d4af37;">PERIOD</th>
+                <th style="padding:14px; text-align:center; border:1px solid #d4af37;">TIMING</th>
+            </tr>
+    """
+
+    for period, timing in PERIODS:
+        html_table += f"""
+            <tr>
+                <td style="padding:12px; text-align:center; font-weight:bold; border:1px solid #d4af37;">{period}</td>
+                <td style="padding:12px; text-align:center; font-weight:bold; border:1px solid #d4af37;">{timing}</td>
+            </tr>
+        """
+
+    html_table += """
+        </table>
+    </div>
+    """
+
+    st.markdown(html_table, unsafe_allow_html=True)
 
     st.markdown(
         """
@@ -950,6 +960,7 @@ def dashboard_page():
         """,
         unsafe_allow_html=True
     )
+
 
 def faculty_page():
     header()
