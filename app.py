@@ -914,13 +914,14 @@ def dashboard_page():
         else:
             st.info("No lab usage yet.")
 
-    st.subheader("⚠ Clash Summary Dashboard")
+      st.subheader("⚠ Clash Summary Dashboard")
+
     k1, k2, k3 = st.columns(3)
     k1.metric("Faculty Clashes", faculty_clashes)
     k2.metric("Room/Lab Clashes", room_clashes)
     k3.metric("Class Clashes", section_clashes)
-    
-      st.subheader("⏱ SRIT Academic Time Grid")
+
+    st.subheader("⏱ SRIT Academic Time Grid")
 
     st.dataframe(
         pd.DataFrame(
