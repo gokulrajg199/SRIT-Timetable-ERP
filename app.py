@@ -924,15 +924,27 @@ def dashboard_page():
     k2.metric("Room/Lab Clashes", room_clashes)
     k3.metric("Class Clashes", section_clashes)
 
-    st.subheader("⏱ SRIT Academic Time Grid")
+   st.markdown("### ⏱ SRIT Academic Time Grid")
 
-    time_grid = pd.DataFrame(PERIODS, columns=["PERIOD", "TIMING"])
+html_table = """
+<table style="width:100%; border-collapse:collapse; text-align:center; font-size:18px;">
+    <tr style="background:#1b5e20; color:white;">
+        <th>PERIOD</th>
+        <th>TIMING</th>
+    </tr>
+"""
 
-    st.dataframe(
-        time_grid,
-        use_container_width=True,
-        hide_index=True
-    )
+for period, timing in PERIODS:
+    html_table += f"""
+    <tr>
+        <td><b>{period}</b></td>
+        <td><b>{timing}</b></td>
+    </tr>
+    """
+
+html_table += "</table>"
+
+st.markdown(html_table, unsafe_allow_html=True)
 
     st.markdown(
         """
