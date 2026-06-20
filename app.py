@@ -17,7 +17,7 @@ except Exception:
     REPORTLAB_AVAILABLE = False
 
 DB_NAME = "timetable.db"
-    st.markdown("### ⏱ SRIT Academic Time Grid")
+       st.markdown("### ⏱ SRIT Academic Time Grid")
 
     html_table = """
     <table style="width:100%; border-collapse:collapse; text-align:center; font-size:18px;">
