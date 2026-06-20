@@ -926,48 +926,25 @@ def dashboard_page():
 
     st.subheader("⏱ SRIT Academic Time Grid")
 
-time_grid = pd.DataFrame(
-    PERIODS,
-    columns=["PERIOD", "TIMING"]
-)
+    time_grid = pd.DataFrame(PERIODS, columns=["PERIOD", "TIMING"])
 
-styled_grid = (
-    time_grid.style
-    .set_properties(**{
-        "text-align": "center",
-        "font-size": "22px",
-        "font-weight": "bold"
-    })
-    .set_table_styles([
-        {
-            "selector": "th",
-            "props": [
-                ("text-align", "center"),
-                ("font-size", "24px"),
-                ("font-weight", "bold")
-            ]
-        }
-    ])
-)
+    st.dataframe(
+        time_grid,
+        use_container_width=True,
+        hide_index=True
+    )
 
-st.dataframe(
-    styled_grid,
-    use_container_width=True,
-    hide_index=True
-)
-st.markdown(
+    st.markdown(
         """
         <div class='success-box'>
-        Advanced rules enabled:
-        Faculty theory max 3/day,
-        Lab max 4/day,
-        One lab per faculty/day,
-        If lab exists theory max 2/day,
+        Advanced rules enabled: Faculty theory max 3/day, Lab max 4/day,
+        One lab per faculty/day, If lab exists theory max 2/day,
         No same subject theory and lab on same day.
         </div>
         """,
         unsafe_allow_html=True
     )
+
 def faculty_page():
     header()
     st.subheader("Faculty Management")
