@@ -1455,13 +1455,13 @@ def main_app():
     elif page == "View / Export":
         view_export_page()
     elif page == "Clash Intelligence":
-    clash_page()
+        clash_page()
     elif page == "Faculty Workload":
-    workload_page()
+        workload_page()
     elif page == "Edit Records":
-    edit_records_page()
+        edit_records_page()
     elif page == "Settings":
-    settings_page()
+        settings_page()
     # FOOTER
     st.markdown("""
     <hr style='border:1px solid #d4af37;'>
