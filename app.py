@@ -880,78 +880,70 @@ def dashboard_page():
     c1, c2, c3, c4 = st.columns(4)
     c5, c6, c7, c8 = st.columns(4)
 
-c1.metric("👨‍🏫 Faculty", len(query_df("SELECT id FROM faculty")))
-c2.metric("🏫 Sections", len(query_df("SELECT id FROM sections")))
-c3.metric("📚 Subjects", len(query_df("SELECT id FROM subjects")))
-c4.metric("🚪 Classrooms", len(query_df("SELECT id FROM rooms WHERE room_type='Classroom'")))
+    c1.metric("👨‍🏫 Faculty", len(query_df("SELECT id FROM faculty")))
+    c2.metric("🏫 Sections", len(query_df("SELECT id FROM sections")))
+    c3.metric("📚 Subjects", len(query_df("SELECT id FROM subjects")))
+    c4.metric("🚪 Classrooms", len(query_df("SELECT id FROM rooms WHERE room_type='Classroom'")))
 
-c5.metric("🖥 Labs", len(query_df("SELECT id FROM rooms WHERE room_type='Lab'")))
-c6.metric("⚙ Other Rooms", len(query_df("SELECT id FROM rooms WHERE room_type NOT IN ('Classroom','Lab')")))
-c7.metric("📅 Entries", len(query_df("SELECT id FROM timetable")))
-c8.metric("⚠ Clashes", total_clashes)
+    c5.metric("🖥 Labs", len(query_df("SELECT id FROM rooms WHERE room_type='Lab'")))
+    c6.metric("⚙ Other Rooms", len(query_df("SELECT id FROM rooms WHERE room_type NOT IN ('Classroom','Lab')")))
+    c7.metric("📅 Entries", len(query_df("SELECT id FROM timetable")))
+    c8.metric("⚠ Clashes", total_clashes)
 
-st.subheader("📊 Timetable Analytics")
+    st.subheader("📊 Timetable Analytics")
 
-workload, room_util, lab_util = analytics_data()
+    workload, room_util, lab_util = analytics_data()
 
-a1, a2, a3 = st.columns(3)
+    a1, a2, a3 = st.columns(3)
 
-with a1:
-    st.markdown("#### Faculty Workload Chart")
-    if not workload.empty:
-        st.bar_chart(workload.set_index("name"))
-    else:
-        st.info("No workload data yet.")
+    with a1:
+        st.markdown("#### Faculty Workload Chart")
+        if not workload.empty:
+            st.bar_chart(workload.set_index("name"))
+        else:
+            st.info("No workload data yet.")
 
-with a2:
-    st.markdown("#### Room Utilization Chart")
-    if not room_util.empty:
-        st.bar_chart(room_util.set_index("room"))
-    else:
-        st.info("No room usage yet.")
+    with a2:
+        st.markdown("#### Room Utilization Chart")
+        if not room_util.empty:
+            st.bar_chart(room_util.set_index("room"))
+        else:
+            st.info("No room usage yet.")
 
-with a3:
-    st.markdown("#### Lab Utilization Chart")
-    if not lab_util.empty:
-        st.bar_chart(lab_util.set_index("lab"))
-    else:
-        st.info("No lab usage yet.")
+    with a3:
+        st.markdown("#### Lab Utilization Chart")
+        if not lab_util.empty:
+            st.bar_chart(lab_util.set_index("lab"))
+        else:
+            st.info("No lab usage yet.")
 
-st.subheader("⚠ Clash Summary Dashboard")
+    st.subheader("⚠ Clash Summary Dashboard")
 
-k1, k2, k3 = st.columns(3)
-k1.metric("Faculty Clashes", faculty_clashes)
-k2.metric("Room/Lab Clashes", room_clashes)
-k3.metric("Class Clashes", section_clashes)
+    k1, k2, k3 = st.columns(3)
+    k1.metric("Faculty Clashes", faculty_clashes)
+    k2.metric("Room/Lab Clashes", room_clashes)
+    k3.metric("Class Clashes", section_clashes)
 
-st.subheader("⏱ SRIT Academic Time Grid")
+    st.subheader("⏱ SRIT Academic Time Grid")
 
-time_grid = pd.DataFrame(
-    PERIODS,
-    columns=["PERIOD", "TIMING"]
-)
+    time_grid = pd.DataFrame(PERIODS, columns=["PERIOD", "TIMING"])
 
-st.dataframe(
-    time_grid,
-    use_container_width=True,
-    hide_index=True
-)
+    st.dataframe(
+        time_grid,
+        use_container_width=True,
+        hide_index=True
+    )
 
-st.markdown(
-    """
-    <div class='success-box'>
-    Advanced rules enabled:
-    Faculty theory max 3/day,
-    Lab max 4/day,
-    One lab per faculty/day,
-    If lab exists theory max 2/day,
-    No same subject theory and lab on same day.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-```
-
+    st.markdown(
+        """
+        <div class='success-box'>
+        Advanced rules enabled: Faculty theory max 3/day, Lab max 4/day,
+        One lab per faculty/day, If lab exists theory max 2/day,
+        No same subject theory and lab on same day.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 def faculty_page():
     header()
