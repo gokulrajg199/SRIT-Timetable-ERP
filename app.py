@@ -926,11 +926,34 @@ def dashboard_page():
 
    st.subheader("⏱ SRIT Academic Time Grid")
 
-st.table(
-    pd.DataFrame(
-        PERIODS,
-        columns=["PERIOD", "TIMING"]
-    )
+time_grid = pd.DataFrame(
+    PERIODS,
+    columns=["PERIOD", "TIMING"]
+)
+
+styled_grid = (
+    time_grid.style
+    .set_properties(**{
+        "text-align": "center",
+        "font-size": "22px",
+        "font-weight": "bold"
+    })
+    .set_table_styles([
+        {
+            "selector": "th",
+            "props": [
+                ("text-align", "center"),
+                ("font-size", "24px"),
+                ("font-weight", "bold")
+            ]
+        }
+    ])
+)
+
+st.dataframe(
+    styled_grid,
+    use_container_width=True,
+    hide_index=True
 )
     st.markdown(
         """
