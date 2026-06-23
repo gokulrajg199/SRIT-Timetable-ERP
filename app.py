@@ -374,6 +374,17 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS faculty_preferences(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        faculty_id INTEGER NOT NULL UNIQUE,
+        preferred_day TEXT DEFAULT '',
+        preferred_period INTEGER,
+        avoid_last_period INTEGER DEFAULT 0,
+        remarks TEXT DEFAULT ''
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -392,6 +403,10 @@ def init_db():
     add_col("timetable", "session_type", "TEXT DEFAULT 'Theory'")
     add_col("timetable", "block_label", "TEXT DEFAULT ''")
     add_col("timetable", "entry_mode", "TEXT DEFAULT 'Auto'")
+    add_col("faculty_preferences", "preferred_day", "TEXT DEFAULT ''")
+    add_col("faculty_preferences", "preferred_period", "INTEGER")
+    add_col("faculty_preferences", "avoid_last_period", "INTEGER DEFAULT 0")
+    add_col("faculty_preferences", "remarks", "TEXT DEFAULT ''")
 
 
 def clean_int(value):
@@ -528,6 +543,7 @@ def create_subject_sessions(subject):
             "hours": theory_hours,
             "continuous_required": int(subject.get("theory_continuous_required") or 0),
             "continuous_hours": max(1, int(subject.get("theory_continuous_hours") or 1)),
+            "same_day_required": int(subject.get("same_day_theory") or 0),
             "faculty_id": int(subject["faculty_id"]),
             "room_id": clean_int(subject.get("room_id")),
         })
@@ -541,6 +557,7 @@ def create_subject_sessions(subject):
             "hours": lab_hours,
             "continuous_required": 1,
             "continuous_hours": max(1, int(subject.get("lab_continuous_hours") or lab_hours or 1)),
+            "same_day_required": 0,
             "faculty_id": int(subject.get("lab_faculty_id") or subject["faculty_id"]),
             "room_id": clean_int(subject.get("lab_room_id") or subject.get("room_id")),
         })
@@ -576,6 +593,15 @@ def generate_for_section(section_id, working_days=6, clear_old=True):
         for r in unavailable_df.itertuples()
     )
 
+    pref_df = query_df("SELECT faculty_id, preferred_day, preferred_period, avoid_last_period FROM faculty_preferences")
+    faculty_preferences = {}
+    for r in pref_df.itertuples():
+        faculty_preferences[int(r.faculty_id)] = {
+            "preferred_day": str(r.preferred_day or ""),
+            "preferred_period": None if pd.isna(r.preferred_period) else int(r.preferred_period),
+            "avoid_last_period": int(r.avoid_last_period or 0)
+        }
+
     for r in old.itertuples():
         if pd.notna(r.faculty_id):
             fid = int(r.faculty_id)
@@ -608,11 +634,12 @@ def generate_for_section(section_id, working_days=6, clear_old=True):
         if (not is_lab) and (day, sid) in section_day_subject_lab:
             return False
 
-        # Same theory subject max 2 periods per day.
+        # Same theory subject max 2 periods per day unless Same Day Theory is enabled.
         if not is_lab:
             current_same_subject = section_day_subject_theory.get((day, sid), 0)
-            if current_same_subject + length > 2:
-                return False
+            if not int(session.get("same_day_required") or 0):
+                if current_same_subject + length > 2:
+                    return False
 
         # Faculty daily rules.
         current_lab = faculty_day_lab_count.get((day, fid), 0)
@@ -636,6 +663,9 @@ def generate_for_section(section_id, working_days=6, clear_old=True):
 
         for p in range(start, start + length):
             if p not in PERIOD_DICT:
+                return False
+            pref = faculty_preferences.get(fid, {})
+            if pref.get("avoid_last_period") and p == max(PERIOD_DICT.keys()):
                 return False
             if grid.get((day, p)) is not None:
                 return False
@@ -672,6 +702,7 @@ def generate_for_section(section_id, working_days=6, clear_old=True):
     for session in sessions:
         hours_left = int(session["hours"])
         attempts = 0
+        selected_same_day = None
 
         while hours_left > 0 and attempts < 1800:
             attempts += 1
@@ -679,20 +710,36 @@ def generate_for_section(section_id, working_days=6, clear_old=True):
             if session["session_type"] == "Lab":
                 length = min(int(session["continuous_hours"]), hours_left, 4)
             elif session["continuous_required"]:
-                length = min(int(session["continuous_hours"]), hours_left, 2)
+                length = min(int(session["continuous_hours"]), hours_left, 3)
             else:
                 length = 1
 
             possible_starts = [p for p, _ in PERIODS if p + length - 1 <= 8]
             random.shuffle(possible_starts)
-            candidate_days = days[:]
-            random.shuffle(candidate_days)
+
+            pref = faculty_preferences.get(int(session["faculty_id"]), {})
+            preferred_period = pref.get("preferred_period")
+            if preferred_period in possible_starts:
+                possible_starts.remove(preferred_period)
+                possible_starts.insert(0, preferred_period)
+
+            if selected_same_day:
+                candidate_days = [selected_same_day]
+            else:
+                candidate_days = days[:]
+                random.shuffle(candidate_days)
+                preferred_day = pref.get("preferred_day")
+                if preferred_day in candidate_days:
+                    candidate_days.remove(preferred_day)
+                    candidate_days.insert(0, preferred_day)
 
             placed = False
             for day in candidate_days:
                 for start in possible_starts:
                     if can_place(day, start, length, session):
                         place(day, start, length, session)
+                        if int(session.get("same_day_required") or 0) and session["session_type"] == "Theory":
+                            selected_same_day = day
                         hours_left -= length
                         placed = True
                         break
@@ -883,7 +930,7 @@ def sidebar_menu():
             "Dashboard", "Faculty", "Sections", "Infrastructure",
             "Subjects & Constraints", "Generate Timetable", "Manual Entry",
             "Delete / Reset", "View / Export", "Clash Intelligence",
-            "Faculty Workload", "Faculty Unavailable", "Edit Records", "Settings"
+            "Faculty Workload", "Faculty Unavailable", "Faculty Preferences", "Edit Records", "Settings"
         ])
         if st.button("Logout", use_container_width=True):
             st.session_state.logged_in = False
@@ -1716,6 +1763,84 @@ def faculty_unavailable_page():
             st.rerun()
 
 
+def faculty_preferences_page():
+    header()
+    st.subheader("Faculty Preferences")
+
+    fdf = faculty_df()
+
+    if fdf.empty:
+        st.warning("Add faculty first.")
+        return
+
+    st.info("Use this page to set preferred day, preferred period, and avoid last-period preference for each faculty.")
+
+    with st.form("faculty_preferences_form"):
+        c1, c2, c3, c4 = st.columns([2, 1.5, 1.5, 2])
+
+        faculty_name = c1.selectbox("Faculty", fdf["name"].tolist(), key="pref_faculty")
+        faculty_id = int(fdf[fdf["name"] == faculty_name]["id"].iloc[0])
+
+        preferred_day = c2.selectbox("Preferred Day", ["No Preference"] + DAYS, key="pref_day")
+        preferred_period = c3.selectbox("Preferred Period", ["No Preference"] + [p for p, _ in PERIODS], key="pref_period")
+        avoid_last_period = c4.checkbox("Avoid Last Period?", key="pref_avoid_last")
+        remarks = st.text_input("Remarks", "", key="pref_remarks")
+
+        submitted = st.form_submit_button("Save Faculty Preference", use_container_width=True)
+
+        if submitted:
+            preferred_day_value = "" if preferred_day == "No Preference" else preferred_day
+            preferred_period_value = None if preferred_period == "No Preference" else int(preferred_period)
+
+            execute(
+                """
+                INSERT INTO faculty_preferences(
+                    faculty_id, preferred_day, preferred_period, avoid_last_period, remarks
+                )
+                VALUES(?,?,?,?,?)
+                ON CONFLICT(faculty_id) DO UPDATE SET
+                    preferred_day=excluded.preferred_day,
+                    preferred_period=excluded.preferred_period,
+                    avoid_last_period=excluded.avoid_last_period,
+                    remarks=excluded.remarks
+                """,
+                (
+                    faculty_id,
+                    preferred_day_value,
+                    preferred_period_value,
+                    1 if avoid_last_period else 0,
+                    remarks
+                )
+            )
+            st.success("Faculty preference saved.")
+            st.rerun()
+
+    st.markdown("### Existing Faculty Preferences")
+
+    data = query_df("""
+        SELECT
+            fp.id,
+            f.name AS faculty,
+            COALESCE(fp.preferred_day, '') AS preferred_day,
+            COALESCE(fp.preferred_period, '') AS preferred_period,
+            CASE WHEN fp.avoid_last_period=1 THEN 'Yes' ELSE 'No' END AS avoid_last_period,
+            COALESCE(fp.remarks, '') AS remarks
+        FROM faculty_preferences fp
+        JOIN faculty f ON fp.faculty_id = f.id
+        ORDER BY f.name
+    """)
+
+    st.dataframe(data, use_container_width=True, hide_index=True)
+
+    if not data.empty:
+        st.markdown("### Delete Preference")
+        delete_id = st.number_input("Enter Preference ID to Delete", min_value=1, step=1, key="delete_preference_id")
+
+        if st.button("Delete Selected Preference", use_container_width=True):
+            execute("DELETE FROM faculty_preferences WHERE id=?", (int(delete_id),))
+            st.success("Faculty preference deleted.")
+            st.rerun()
+
 def settings_page():
     header()
     st.subheader("Settings")
@@ -1730,7 +1855,7 @@ def settings_page():
         st.success("Sample data loaded.")
 
     if st.button("Reset All Master Data and Timetable"):
-        for table in ["timetable", "subjects", "rooms", "sections", "faculty"]:
+        for table in ["timetable", "subjects", "rooms", "sections", "faculty_unavailable", "faculty_preferences", "faculty"]:
             execute(f"DELETE FROM {table}")
         st.warning("All data cleared.")
 
@@ -1746,6 +1871,17 @@ def settings_page():
                 mime="application/octet-stream",
                 use_container_width=True
             )
+
+
+    st.markdown("### Database Restore")
+    restore_file = st.file_uploader("Upload timetable_backup.db to restore", type=["db"], key="restore_db_file")
+    if restore_file is not None:
+        st.warning("Restoring will replace the current database. Use only your valid backup file.")
+        if st.button("Restore Database", use_container_width=True):
+            with open(DB_NAME, "wb") as f:
+                f.write(restore_file.getbuffer())
+            st.success("Database restored successfully. Please refresh the app.")
+            st.rerun()
 
 def main_app():
     page = sidebar_menu()
@@ -1774,6 +1910,8 @@ def main_app():
         workload_page()
     elif page == "Faculty Unavailable":
         faculty_unavailable_page()
+    elif page == "Faculty Preferences":
+        faculty_preferences_page()
     elif page == "Edit Records":
         edit_records_page()
     elif page == "Settings":
