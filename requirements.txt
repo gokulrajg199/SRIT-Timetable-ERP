@@ -1,4 +1,6 @@
 streamlit
 pandas
 openpyxl
-Pillow
+reportlab
+psycopg2-binary
+sqlalchemy
