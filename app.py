@@ -663,6 +663,7 @@ def header():
 def login_page():
     header()
     col1, col2, col3 = st.columns([1, 1.1, 1])
+
     with col2:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("Role Based Login")
@@ -672,23 +673,27 @@ def login_page():
 
         if st.button("Login", use_container_width=True):
             user_df = query_df(
-                "SELECT * FROM users WHERE username=? AND password=?",
+                "SELECT * FROM users WHERE username=%s AND password=%s AND is_active=TRUE",
                 (username, password)
             )
 
             if not user_df.empty:
                 row = user_df.iloc[0]
+
                 st.session_state.logged_in = True
                 st.session_state.username = row["username"]
                 st.session_state.role = row["role"]
                 st.session_state.full_name = row["name"]
                 st.session_state.department = row["department"]
-                log_action("Login", f"{row['username']} logged in as {row['role']}")
+
+                st.success(f"Welcome {row['name']} ({row['role']})")
                 st.rerun()
             else:
                 st.error("Invalid username or password")
 
-        st.info("Default logins: admin/admin123 | hod/hod123 | faculty/faculty123 | student/student123")
+        st.info(
+            "Default logins: admin/admin123 | principal/principal123 | hod/hod123 | faculty/faculty123 | student/student123"
+        )
         st.markdown("</div>", unsafe_allow_html=True)
 
 
