@@ -363,6 +363,17 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS faculty_unavailable(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        faculty_id INTEGER NOT NULL,
+        day TEXT NOT NULL,
+        period INTEGER NOT NULL,
+        reason TEXT DEFAULT '',
+        UNIQUE(faculty_id, day, period)
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -559,6 +570,12 @@ def generate_for_section(section_id, working_days=6, clear_old=True):
     section_day_subject_theory = {}
     section_day_subject_lab = set()
 
+    unavailable_df = query_df("SELECT faculty_id, day, period FROM faculty_unavailable")
+    unavailable_slots = set(
+        (r.day, int(r.period), int(r.faculty_id))
+        for r in unavailable_df.itertuples()
+    )
+
     for r in old.itertuples():
         if pd.notna(r.faculty_id):
             fid = int(r.faculty_id)
@@ -624,6 +641,8 @@ def generate_for_section(section_id, working_days=6, clear_old=True):
                 return False
             if (day, p, fid) in used_faculty:
                 return False
+            if (day, p, fid) in unavailable_slots:
+                return False
             if room_id and (day, p, room_id) in used_room:
                 return False
         return True
@@ -684,7 +703,8 @@ def generate_for_section(section_id, working_days=6, clear_old=True):
                 return False, (
                     f"Unable to place {session['subject_name']} ({session['session_type']}). "
                     "Check rules: faculty max theory/day=3, lab/day=1, lab max=4, "
-                    "if lab exists theory max=2, no same subject theory+lab on same day."
+                    "if lab exists theory max=2, no same subject theory+lab on same day, "
+                    "and faculty unavailable constraints."
                 )
 
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -863,7 +883,7 @@ def sidebar_menu():
             "Dashboard", "Faculty", "Sections", "Infrastructure",
             "Subjects & Constraints", "Generate Timetable", "Manual Entry",
             "Delete / Reset", "View / Export", "Clash Intelligence",
-            "Faculty Workload", "Edit Records", "Settings"
+            "Faculty Workload", "Faculty Unavailable", "Edit Records", "Settings"
         ])
         if st.button("Logout", use_container_width=True):
             st.session_state.logged_in = False
@@ -1621,6 +1641,81 @@ def edit_records_page():
                     st.success("Timetable entry updated.")
                     st.rerun()
 
+
+def faculty_unavailable_page():
+    header()
+    st.subheader("Faculty Unavailable Period Constraints")
+
+    fdf = faculty_df()
+
+    if fdf.empty:
+        st.warning("Add faculty first.")
+        return
+
+    st.info("Use this page when a faculty member says: Do not assign me on Monday Period 1, Tuesday Period 6, Friday Period 8, etc.")
+
+    with st.form("faculty_unavailable_form"):
+        c1, c2, c3, c4 = st.columns([2, 1.5, 1.2, 2])
+
+        faculty_name = c1.selectbox("Faculty", fdf["name"].tolist(), key="unavailable_faculty")
+        faculty_id = int(fdf[fdf["name"] == faculty_name]["id"].iloc[0])
+
+        day = c2.selectbox("Unavailable Day", DAYS, key="unavailable_day")
+        period = c3.selectbox("Unavailable Period", [p for p, _ in PERIODS], key="unavailable_period")
+        reason = c4.text_input("Reason", "Faculty not available", key="unavailable_reason")
+
+        submitted = st.form_submit_button("Save Faculty Unavailable Constraint", use_container_width=True)
+
+        if submitted:
+            try:
+                execute(
+                    """
+                    INSERT INTO faculty_unavailable(faculty_id, day, period, reason)
+                    VALUES(?,?,?,?)
+                    """,
+                    (faculty_id, day, period, reason)
+                )
+                st.success(f"Saved: {faculty_name} is unavailable on {day} Period {period}.")
+                st.rerun()
+            except sqlite3.IntegrityError:
+                st.error("This unavailable constraint already exists.")
+
+    st.markdown("### Existing Faculty Unavailable Constraints")
+
+    data = query_df("""
+        SELECT
+            fu.id,
+            f.name AS faculty,
+            fu.day,
+            fu.period,
+            fu.reason
+        FROM faculty_unavailable fu
+        JOIN faculty f ON fu.faculty_id = f.id
+        ORDER BY
+            f.name,
+            CASE fu.day
+                WHEN 'Monday' THEN 1
+                WHEN 'Tuesday' THEN 2
+                WHEN 'Wednesday' THEN 3
+                WHEN 'Thursday' THEN 4
+                WHEN 'Friday' THEN 5
+                WHEN 'Saturday' THEN 6
+            END,
+            fu.period
+    """)
+
+    st.dataframe(data, use_container_width=True, hide_index=True)
+
+    if not data.empty:
+        st.markdown("### Delete Constraint")
+        delete_id = st.number_input("Enter Constraint ID to Delete", min_value=1, step=1, key="delete_unavailable_constraint_id")
+
+        if st.button("Delete Selected Constraint", use_container_width=True):
+            execute("DELETE FROM faculty_unavailable WHERE id=?", (int(delete_id),))
+            st.success("Faculty unavailable constraint deleted.")
+            st.rerun()
+
+
 def settings_page():
     header()
     st.subheader("Settings")
@@ -1677,6 +1772,8 @@ def main_app():
         clash_page()
     elif page == "Faculty Workload":
         workload_page()
+    elif page == "Faculty Unavailable":
+        faculty_unavailable_page()
     elif page == "Edit Records":
         edit_records_page()
     elif page == "Settings":
