@@ -1234,37 +1234,24 @@ def dashboard_page():
     k2.metric("Room/Lab Clashes", room_clashes)
     k3.metric("Class Clashes", section_clashes)
 
-    st.subheader("⏱ SRIT Academic Time Grid")
+   st.subheader("⏱ SRIT Academic Time Grid")
 
-    html_table = """
-    <table style="width:100%; border-collapse:collapse; text-align:center; font-size:18px;">
-        <tr style="background:#1b5e20; color:white;">
-            <th style="padding:12px; text-align:center; border:1px solid #d4af37;">PERIOD</th>
-            <th style="padding:12px; text-align:center; border:1px solid #d4af37;">TIMING</th>
-        </tr>
-    """
+time_grid = pd.DataFrame(
+[
+[1, "08:50 AM - 09:40 AM"],
+[2, "09:40 AM - 10:30 AM"],
+[3, "10:50 AM - 11:40 AM"],
+[4, "11:40 AM - 12:30 PM"],
+[5, "01:20 PM - 02:10 PM"],
+[6, "02:10 PM - 03:00 PM"],
+[7, "03:15 PM - 04:05 PM"],
+[8, "04:05 PM - 04:55 PM"]
+],
+columns=["PERIOD", "TIMING"]
+)
 
-    for period, timing in PERIODS:
-        html_table += f"""
-        <tr>
-            <td style="padding:12px; text-align:center; font-weight:bold; border:1px solid #d4af37;">{period}</td>
-            <td style="padding:12px; text-align:center; font-weight:bold; border:1px solid #d4af37;">{timing}</td>
-        </tr>
-        """
+st.table(time_grid)
 
-    html_table += "</table>"
-    st.markdown(html_table, unsafe_allow_html=True)
-
-    st.markdown(
-        """
-        <div class='success-box'>
-        Advanced rules enabled: Faculty theory max 3/day, Lab max 4/day,
-        One lab per faculty/day, If lab exists theory max 2/day,
-        No same subject theory and lab on same day.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
 def faculty_page():
     header()
