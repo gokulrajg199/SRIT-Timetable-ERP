@@ -673,7 +673,7 @@ def login_page():
 
         if st.button("Login", use_container_width=True):
             user_df = query_df(
-                "SELECT * FROM users WHERE username=%s AND password=%s AND is_active=TRUE",
+                "SELECT * FROM users WHERE username=? AND password=?",
                 (username, password)
             )
 
