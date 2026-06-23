@@ -255,6 +255,35 @@ def execute(query, params=()):
     conn = connect_db()
     cur = conn.cursor()
     cur.execute(query, params)
+    cur.executemany(
+        "INSERT OR IGNORE INTO departments(department_name, hod_name, status) VALUES(?,?,?)",
+        [
+            ("CSE", "HOD CSE", "Active"),
+            ("IT", "HOD IT", "Active"),
+            ("AI&DS", "HOD AI&DS", "Active"),
+            ("AIDS", "HOD AIDS", "Active"),
+            ("ECE", "HOD ECE", "Active"),
+            ("EEE", "HOD EEE", "Active"),
+            ("MECH", "HOD MECH", "Active"),
+            ("CIVIL", "HOD CIVIL", "Active"),
+        ]
+    )
+
+    cur.executemany(
+        "INSERT OR IGNORE INTO users(username, password, role, name, department) VALUES(?,?,?,?,?)",
+        [
+            ("admin", "admin123", "Admin", "System Admin", "CSE"),
+            ("hod", "hod123", "HOD", "HOD User", "CSE"),
+            ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
+            ("student", "student123", "Student", "Student User", "CSE"),
+        ]
+    )
+
+    cur.execute(
+        "INSERT OR IGNORE INTO academic_years(year_name, semester_type, is_active) VALUES(?,?,?)",
+        ("2026-2027", "Odd Semester", 1)
+    )
+
     conn.commit()
     conn.close()
 
@@ -272,6 +301,17 @@ def query_df(query, params=()):
     df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
+
+
+def log_action(action, details=""):
+    try:
+        username = st.session_state.get("username", "system")
+        execute(
+            "INSERT INTO audit_log(action, details, created_at, username) VALUES(?,?,?,?)",
+            (action, details, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), username)
+        )
+    except Exception:
+        pass
 
 
 def column_exists(table, column):
@@ -385,6 +425,101 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS departments(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        department_name TEXT UNIQUE NOT NULL,
+        hod_name TEXT DEFAULT '',
+        status TEXT DEFAULT 'Active'
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS academic_years(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year_name TEXT NOT NULL,
+        semester_type TEXT NOT NULL,
+        is_active INTEGER DEFAULT 0,
+        UNIQUE(year_name, semester_type)
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS timetable_approvals(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        section_id INTEGER NOT NULL,
+        status TEXT DEFAULT 'Draft',
+        hod_comment TEXT DEFAULT '',
+        principal_comment TEXT DEFAULT '',
+        updated_at TEXT,
+        UNIQUE(section_id)
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS audit_log(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action TEXT,
+        details TEXT,
+        created_at TEXT,
+        username TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL,
+        name TEXT DEFAULT '',
+        department TEXT DEFAULT ''
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS faculty_swap_requests(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        faculty_id INTEGER,
+        request_details TEXT,
+        status TEXT DEFAULT 'Pending',
+        created_at TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS faculty_leave(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        faculty_id INTEGER,
+        day TEXT,
+        period INTEGER,
+        reason TEXT,
+        status TEXT DEFAULT 'Pending'
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS attendance(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timetable_id INTEGER,
+        attendance_date TEXT,
+        status TEXT,
+        remarks TEXT DEFAULT '',
+        created_at TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS exam_timetable(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        section_id INTEGER,
+        subject_id INTEGER,
+        exam_date TEXT,
+        exam_time TEXT,
+        room_id INTEGER
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -407,6 +542,13 @@ def init_db():
     add_col("faculty_preferences", "preferred_period", "INTEGER")
     add_col("faculty_preferences", "avoid_last_period", "INTEGER DEFAULT 0")
     add_col("faculty_preferences", "remarks", "TEXT DEFAULT ''")
+    add_col("sections", "academic_year", "TEXT DEFAULT '2026-2027'")
+    add_col("sections", "semester_type", "TEXT DEFAULT 'Odd Semester'")
+    add_col("sections", "is_published", "INTEGER DEFAULT 0")
+    add_col("timetable_approvals", "status", "TEXT DEFAULT 'Draft'")
+    add_col("timetable_approvals", "hod_comment", "TEXT DEFAULT ''")
+    add_col("timetable_approvals", "principal_comment", "TEXT DEFAULT ''")
+    add_col("timetable_approvals", "updated_at", "TEXT")
 
 
 def clean_int(value):
@@ -478,16 +620,30 @@ def login_page():
     col1, col2, col3 = st.columns([1, 1.1, 1])
     with col2:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.subheader("Admin Login")
+        st.subheader("Role Based Login")
+
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
+
         if st.button("Login", use_container_width=True):
-            if username == "admin" and password == "admin123":
+            user_df = query_df(
+                "SELECT * FROM users WHERE username=? AND password=?",
+                (username, password)
+            )
+
+            if not user_df.empty:
+                row = user_df.iloc[0]
                 st.session_state.logged_in = True
+                st.session_state.username = row["username"]
+                st.session_state.role = row["role"]
+                st.session_state.full_name = row["name"]
+                st.session_state.department = row["department"]
+                log_action("Login", f"{row['username']} logged in as {row['role']}")
                 st.rerun()
             else:
                 st.error("Invalid username or password")
-        st.info("Default: admin / admin123")
+
+        st.info("Default logins: admin/admin123 | hod/hod123 | faculty/faculty123 | student/student123")
         st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -924,16 +1080,53 @@ def analytics_data():
 
 
 def sidebar_menu():
+    role = st.session_state.get("role", "Admin")
+
+    admin_menu = [
+        "Dashboard", "Department Management", "Academic Year",
+        "Faculty", "Sections", "Infrastructure",
+        "Subjects & Constraints", "Generate Timetable", "Auto Clash Resolver",
+        "Manual Entry", "Delete / Reset", "View / Export",
+        "Clash Intelligence", "Faculty Workload", "Faculty Unavailable",
+        "Faculty Preferences", "Approval Workflow", "Student Portal",
+        "Faculty Swap Requests", "Leave Management", "Attendance",
+        "Exam Timetable", "Audit Log", "Excel Import", "Edit Records", "Settings"
+    ]
+
+    hod_menu = [
+        "Dashboard", "Sections", "Subjects & Constraints", "Generate Timetable",
+        "Auto Clash Resolver", "View / Export", "Clash Intelligence",
+        "Faculty Workload", "Faculty Unavailable", "Faculty Preferences",
+        "Approval Workflow", "Faculty Swap Requests", "Leave Management",
+        "Audit Log"
+    ]
+
+    faculty_menu = [
+        "Dashboard", "View / Export", "Faculty Unavailable",
+        "Faculty Preferences", "Faculty Swap Requests", "Leave Management",
+        "Attendance"
+    ]
+
+    student_menu = ["Student Portal", "View / Export"]
+
+    if role == "Admin":
+        menu = admin_menu
+    elif role == "HOD":
+        menu = hod_menu
+    elif role == "Faculty":
+        menu = faculty_menu
+    else:
+        menu = student_menu
+
     with st.sidebar:
         st.title("SRIT ERP")
-        page = st.radio("Menu", [
-            "Dashboard", "Faculty", "Sections", "Infrastructure",
-            "Subjects & Constraints", "Generate Timetable", "Manual Entry",
-            "Delete / Reset", "View / Export", "Clash Intelligence",
-            "Faculty Workload", "Faculty Unavailable", "Faculty Preferences", "Edit Records", "Settings"
-        ])
+        st.caption(f"Logged in as: {role}")
+        page = st.radio("Menu", menu)
         if st.button("Logout", use_container_width=True):
+            log_action("Logout", f"{st.session_state.get('username','user')} logged out")
             st.session_state.logged_in = False
+            st.session_state.role = ""
+            st.session_state.username = ""
             st.rerun()
     return page
 
@@ -993,13 +1186,24 @@ def dashboard_page():
 
     st.subheader("⏱ SRIT Academic Time Grid")
 
-    time_grid = pd.DataFrame(PERIODS, columns=["PERIOD", "TIMING"])
+    html_table = """
+    <table style="width:100%; border-collapse:collapse; text-align:center; font-size:18px;">
+        <tr style="background:#1b5e20; color:white;">
+            <th style="padding:12px; text-align:center; border:1px solid #d4af37;">PERIOD</th>
+            <th style="padding:12px; text-align:center; border:1px solid #d4af37;">TIMING</th>
+        </tr>
+    """
 
-    st.dataframe(
-        time_grid,
-        use_container_width=True,
-        hide_index=True
-    )
+    for period, timing in PERIODS:
+        html_table += f"""
+        <tr>
+            <td style="padding:12px; text-align:center; font-weight:bold; border:1px solid #d4af37;">{period}</td>
+            <td style="padding:12px; text-align:center; font-weight:bold; border:1px solid #d4af37;">{timing}</td>
+        </tr>
+        """
+
+    html_table += "</table>"
+    st.markdown(html_table, unsafe_allow_html=True)
 
     st.markdown(
         """
@@ -1841,6 +2045,414 @@ def faculty_preferences_page():
             st.success("Faculty preference deleted.")
             st.rerun()
 
+
+
+def department_management_page():
+    header()
+    st.subheader("Department Management")
+
+    with st.form("department_form"):
+        c1, c2, c3 = st.columns(3)
+        department_name = c1.text_input("Department Name", "CSE")
+        hod_name = c2.text_input("HOD Name", "")
+        status = c3.selectbox("Status", ["Active", "Inactive"])
+
+        if st.form_submit_button("Save Department", use_container_width=True):
+            try:
+                execute(
+                    "INSERT INTO departments(department_name, hod_name, status) VALUES(?,?,?)",
+                    (department_name, hod_name, status)
+                )
+                log_action("Department Added", department_name)
+                st.success("Department saved.")
+                st.rerun()
+            except sqlite3.IntegrityError:
+                execute(
+                    "UPDATE departments SET hod_name=?, status=? WHERE department_name=?",
+                    (hod_name, status, department_name)
+                )
+                log_action("Department Updated", department_name)
+                st.success("Department updated.")
+                st.rerun()
+
+    df = query_df("SELECT * FROM departments ORDER BY department_name")
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def academic_year_page():
+    header()
+    st.subheader("Academic Year & Semester Management")
+
+    with st.form("academic_year_form"):
+        c1, c2, c3 = st.columns(3)
+        year_name = c1.text_input("Academic Year", "2026-2027")
+        semester_type = c2.selectbox("Semester Type", ["Odd Semester", "Even Semester"])
+        is_active = c3.checkbox("Set as Active Academic Term")
+
+        if st.form_submit_button("Save Academic Term", use_container_width=True):
+            if is_active:
+                execute("UPDATE academic_years SET is_active=0")
+            try:
+                execute(
+                    "INSERT INTO academic_years(year_name, semester_type, is_active) VALUES(?,?,?)",
+                    (year_name, semester_type, 1 if is_active else 0)
+                )
+                log_action("Academic Term Added", f"{year_name} {semester_type}")
+                st.success("Academic term saved.")
+                st.rerun()
+            except sqlite3.IntegrityError:
+                execute(
+                    "UPDATE academic_years SET is_active=? WHERE year_name=? AND semester_type=?",
+                    (1 if is_active else 0, year_name, semester_type)
+                )
+                log_action("Academic Term Updated", f"{year_name} {semester_type}")
+                st.success("Academic term updated.")
+                st.rerun()
+
+    st.dataframe(query_df("SELECT * FROM academic_years ORDER BY id DESC"), use_container_width=True, hide_index=True)
+
+
+def approval_workflow_page():
+    header()
+    st.subheader("Approval Workflow")
+
+    sdf = section_label_df()
+    if sdf.empty:
+        st.warning("Add sections first.")
+        return
+
+    section_name = st.selectbox("Select Class / Section", sdf["label"].tolist())
+    section_id = int(sdf[sdf["label"] == section_name]["id"].iloc[0])
+
+    approval = query_df("SELECT * FROM timetable_approvals WHERE section_id=?", (section_id,))
+    current_status = "Draft" if approval.empty else approval.iloc[0]["status"]
+
+    st.info(f"Current Status: {current_status}")
+
+    c1, c2 = st.columns(2)
+    hod_comment = c1.text_area("HOD Comment", "")
+    principal_comment = c2.text_area("Principal Comment", "")
+
+    status_options = ["Draft", "Submitted", "Approved by HOD", "Approved by Principal", "Published", "Rejected"]
+    new_status = st.selectbox(
+        "Update Status",
+        status_options,
+        index=status_options.index(current_status) if current_status in status_options else 0
+    )
+
+    if st.button("Update Approval Status", use_container_width=True):
+        execute("""
+            INSERT INTO timetable_approvals(section_id, status, hod_comment, principal_comment, updated_at)
+            VALUES(?,?,?,?,?)
+            ON CONFLICT(section_id) DO UPDATE SET
+                status=excluded.status,
+                hod_comment=excluded.hod_comment,
+                principal_comment=excluded.principal_comment,
+                updated_at=excluded.updated_at
+        """, (section_id, new_status, hod_comment, principal_comment, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+        execute("UPDATE sections SET is_published=? WHERE id=?", (1 if new_status == "Published" else 0, section_id))
+        log_action("Approval Updated", f"{section_name}: {new_status}")
+        st.success("Approval status updated.")
+        st.rerun()
+
+    st.markdown("### Approval Summary")
+    df = query_df("""
+        SELECT ta.id, sec.year, sec.department, sec.semester, sec.section,
+               ta.status, ta.hod_comment, ta.principal_comment, ta.updated_at
+        FROM timetable_approvals ta
+        JOIN sections sec ON ta.section_id=sec.id
+        ORDER BY ta.updated_at DESC
+    """)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def auto_clash_resolver_page():
+    header()
+    st.subheader("Auto Clash Resolver")
+
+    faculty_clashes, room_clashes, section_clashes = compute_clash_counts()
+    total = faculty_clashes + room_clashes + section_clashes
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Faculty Clashes", faculty_clashes)
+    c2.metric("Room/Lab Clashes", room_clashes)
+    c3.metric("Class Clashes", section_clashes)
+    c4.metric("Total Clashes", total)
+
+    st.info("Auto resolver clears the selected class timetable and regenerates using all current constraints.")
+
+    sdf = section_label_df()
+    if sdf.empty:
+        st.warning("Add sections first.")
+        return
+
+    section_name = st.selectbox("Select Class to Resolve", sdf["label"].tolist())
+    selected = sdf[sdf["label"] == section_name].iloc[0]
+    section_id = int(selected["id"])
+
+    if st.button("Analyze & Auto Resolve Selected Class", use_container_width=True):
+        ok, msg = generate_for_section(section_id, int(selected["working_days"]), clear_old=True)
+        log_action("Auto Clash Resolver", section_name)
+        if ok:
+            st.success("Regenerated successfully. " + msg)
+        else:
+            st.error(msg)
+
+
+def student_portal_page():
+    header()
+    st.subheader("Student View Only Portal")
+
+    sdf = section_label_df()
+    if sdf.empty:
+        st.warning("No timetable available.")
+        return
+
+    label = st.selectbox("Select Class / Section", sdf["label"].tolist())
+    section_id = int(sdf[sdf["label"] == label]["id"].iloc[0])
+
+    pub = query_df("SELECT is_published FROM sections WHERE id=?", (section_id,))
+    if not pub.empty and int(pub.iloc[0]["is_published"] or 0) == 0:
+        st.warning("This timetable is not yet published. Admin/HOD can still preview it.")
+
+    df = timetable_detail(section_id=section_id)
+    pivot = make_pivot(df)
+    st.dataframe(pivot, use_container_width=True)
+
+    if not df.empty:
+        pdf = create_pdf(f"{label} - Student Timetable", df, pivot)
+        st.download_button(
+            "Download Student Timetable PDF",
+            data=pdf,
+            file_name=f"{label.replace(' ', '_')}_Student_Timetable.pdf",
+            mime="application/pdf" if REPORTLAB_AVAILABLE else "text/plain",
+            use_container_width=True
+        )
+
+
+def faculty_swap_requests_page():
+    header()
+    st.subheader("Faculty Swap Requests")
+
+    fdf = faculty_df()
+    if fdf.empty:
+        st.warning("Add faculty first.")
+        return
+
+    with st.form("swap_request_form"):
+        faculty_name = st.selectbox("Faculty", fdf["name"].tolist())
+        faculty_id = int(fdf[fdf["name"] == faculty_name]["id"].iloc[0])
+        request_details = st.text_area("Swap Request Details", "I request to swap ...")
+
+        if st.form_submit_button("Submit Swap Request", use_container_width=True):
+            execute(
+                "INSERT INTO faculty_swap_requests(faculty_id, request_details, status, created_at) VALUES(?,?,?,?)",
+                (faculty_id, request_details, "Pending", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            )
+            log_action("Swap Request Created", faculty_name)
+            st.success("Swap request submitted.")
+            st.rerun()
+
+    df = query_df("""
+        SELECT fs.id, f.name AS faculty, fs.request_details, fs.status, fs.created_at
+        FROM faculty_swap_requests fs
+        JOIN faculty f ON fs.faculty_id=f.id
+        ORDER BY fs.id DESC
+    """)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+    if not df.empty:
+        c1, c2 = st.columns(2)
+        req_id = c1.number_input("Request ID", min_value=1, step=1)
+        status = c2.selectbox("Update Status", ["Pending", "Approved", "Rejected"])
+        if st.button("Update Swap Request Status", use_container_width=True):
+            execute("UPDATE faculty_swap_requests SET status=? WHERE id=?", (status, int(req_id)))
+            log_action("Swap Request Status Updated", f"ID {req_id}: {status}")
+            st.success("Status updated.")
+            st.rerun()
+
+
+def leave_management_page():
+    header()
+    st.subheader("Leave Management Integration")
+
+    fdf = faculty_df()
+    if fdf.empty:
+        st.warning("Add faculty first.")
+        return
+
+    with st.form("leave_form"):
+        c1, c2, c3 = st.columns(3)
+        faculty_name = c1.selectbox("Faculty", fdf["name"].tolist())
+        faculty_id = int(fdf[fdf["name"] == faculty_name]["id"].iloc[0])
+        day = c2.selectbox("Leave Day", DAYS)
+        period = c3.selectbox("Affected Period", [0] + [p for p, _ in PERIODS], format_func=lambda x: "Full Day" if x == 0 else f"Period {x}")
+        reason = st.text_input("Reason", "On leave")
+
+        if st.form_submit_button("Submit Leave", use_container_width=True):
+            execute("INSERT INTO faculty_leave(faculty_id, day, period, reason, status) VALUES(?,?,?,?,?)", (faculty_id, day, period, reason, "Pending"))
+            log_action("Leave Submitted", faculty_name)
+            st.success("Leave request saved.")
+            st.rerun()
+
+    df = query_df("""
+        SELECT fl.id, f.name AS faculty, fl.day, fl.period, fl.reason, fl.status
+        FROM faculty_leave fl
+        JOIN faculty f ON fl.faculty_id=f.id
+        ORDER BY fl.id DESC
+    """)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+    if not df.empty:
+        leave_id = st.number_input("Leave ID to update", min_value=1, step=1)
+        status = st.selectbox("Leave Status", ["Pending", "Approved", "Rejected"])
+        if st.button("Update Leave Status", use_container_width=True):
+            execute("UPDATE faculty_leave SET status=? WHERE id=?", (status, int(leave_id)))
+            log_action("Leave Status Updated", f"ID {leave_id}: {status}")
+            st.success("Leave status updated.")
+            st.rerun()
+
+
+def attendance_page():
+    header()
+    st.subheader("Attendance Integration")
+
+    df = timetable_detail()
+    if df.empty:
+        st.warning("Generate timetable first.")
+        return
+
+    df["display"] = df.apply(lambda x: f"ID {x['id']} | {x['day']} P{x['period']} | {x['subject_name']} | {x['faculty']}", axis=1)
+
+    with st.form("attendance_form"):
+        selected = st.selectbox("Select Timetable Slot", df["display"].tolist())
+        timetable_id = int(selected.split("|")[0].replace("ID", "").strip())
+        attendance_date = st.date_input("Date")
+        status = st.selectbox("Status", ["Conducted", "Cancelled", "Substituted"])
+        remarks = st.text_input("Remarks", "")
+
+        if st.form_submit_button("Save Attendance Entry", use_container_width=True):
+            execute(
+                "INSERT INTO attendance(timetable_id, attendance_date, status, remarks, created_at) VALUES(?,?,?,?,?)",
+                (timetable_id, str(attendance_date), status, remarks, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            )
+            log_action("Attendance Saved", f"Timetable ID {timetable_id}")
+            st.success("Attendance entry saved.")
+            st.rerun()
+
+    data = query_df("""
+        SELECT a.id, a.attendance_date, a.status, a.remarks,
+               t.day, t.period, s.subject_name, f.name AS faculty
+        FROM attendance a
+        JOIN timetable t ON a.timetable_id=t.id
+        JOIN subjects s ON t.subject_id=s.id
+        JOIN faculty f ON t.faculty_id=f.id
+        ORDER BY a.id DESC
+    """)
+    st.dataframe(data, use_container_width=True, hide_index=True)
+
+
+def exam_timetable_page():
+    header()
+    st.subheader("Exam Timetable Generator")
+
+    sdf = section_label_df()
+    rdf = rooms_df()
+
+    if sdf.empty:
+        st.warning("Add sections first.")
+        return
+
+    section_name = st.selectbox("Class / Section", sdf["label"].tolist())
+    section_id = int(sdf[sdf["label"] == section_name]["id"].iloc[0])
+    subdf = subject_label_df(section_id)
+
+    if subdf.empty:
+        st.warning("Add subjects for this section first.")
+        return
+
+    with st.form("exam_form"):
+        subject_label = st.selectbox("Subject", subdf["label"].tolist())
+        subject_id = int(subdf[subdf["label"] == subject_label]["id"].iloc[0])
+        exam_date = st.date_input("Exam Date")
+        exam_time = st.text_input("Exam Time", "10:00 AM - 01:00 PM")
+        room_name = st.selectbox("Room", ["None"] + rdf["room_name"].tolist())
+        room_id = None if room_name == "None" else int(rdf[rdf["room_name"] == room_name]["id"].iloc[0])
+
+        if st.form_submit_button("Save Exam Timetable", use_container_width=True):
+            execute(
+                "INSERT INTO exam_timetable(section_id, subject_id, exam_date, exam_time, room_id) VALUES(?,?,?,?,?)",
+                (section_id, subject_id, str(exam_date), exam_time, room_id)
+            )
+            log_action("Exam Timetable Added", subject_label)
+            st.success("Exam timetable saved.")
+            st.rerun()
+
+    data = query_df("""
+        SELECT et.id, sec.year, sec.department, sec.semester, sec.section,
+               s.subject_code, s.subject_name, et.exam_date, et.exam_time,
+               COALESCE(r.room_name, '') AS room
+        FROM exam_timetable et
+        JOIN sections sec ON et.section_id=sec.id
+        JOIN subjects s ON et.subject_id=s.id
+        LEFT JOIN rooms r ON et.room_id=r.id
+        ORDER BY et.exam_date
+    """)
+    st.dataframe(data, use_container_width=True, hide_index=True)
+
+
+def audit_log_page():
+    header()
+    st.subheader("Audit Log")
+
+    df = query_df("SELECT * FROM audit_log ORDER BY id DESC LIMIT 500")
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def excel_import_page():
+    header()
+    st.subheader("Excel Import")
+
+    st.info("Upload Excel files with sheets named Faculty, Sections, Rooms, Subjects. Columns must match existing table fields.")
+
+    uploaded = st.file_uploader("Upload Excel Template", type=["xlsx"], key="excel_import_file")
+    if uploaded is not None:
+        try:
+            xls = pd.ExcelFile(uploaded)
+            st.write("Detected sheets:", xls.sheet_names)
+
+            if st.button("Import Excel Data", use_container_width=True):
+                if "Faculty" in xls.sheet_names:
+                    df = pd.read_excel(xls, "Faculty")
+                    for _, r in df.iterrows():
+                        execute(
+                            "INSERT OR IGNORE INTO faculty(name, designation, department, max_hours) VALUES(?,?,?,?)",
+                            (str(r.get("name", "")), str(r.get("designation", "")), str(r.get("department", "")), int(r.get("max_hours", 24)))
+                        )
+
+                if "Rooms" in xls.sheet_names:
+                    df = pd.read_excel(xls, "Rooms")
+                    for _, r in df.iterrows():
+                        execute(
+                            "INSERT OR IGNORE INTO rooms(room_name, room_type, capacity, equipment) VALUES(?,?,?,?)",
+                            (str(r.get("room_name", "")), str(r.get("room_type", "Classroom")), int(r.get("capacity", 60)), str(r.get("equipment", "")))
+                        )
+
+                if "Sections" in xls.sheet_names:
+                    df = pd.read_excel(xls, "Sections")
+                    for _, r in df.iterrows():
+                        execute(
+                            "INSERT OR IGNORE INTO sections(year, department, semester, section, working_days) VALUES(?,?,?,?,?)",
+                            (str(r.get("year", "")), str(r.get("department", "")), str(r.get("semester", "")), str(r.get("section", "")), int(r.get("working_days", 6)))
+                        )
+
+                log_action("Excel Import", ",".join(xls.sheet_names))
+                st.success("Excel import completed.")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Import failed: {e}")
+
 def settings_page():
     header()
     st.subheader("Settings")
@@ -1888,6 +2500,10 @@ def main_app():
 
     if page == "Dashboard":
         dashboard_page()
+    elif page == "Department Management":
+        department_management_page()
+    elif page == "Academic Year":
+        academic_year_page()
     elif page == "Faculty":
         faculty_page()
     elif page == "Sections":
@@ -1898,6 +2514,8 @@ def main_app():
         subjects_page()
     elif page == "Generate Timetable":
         generate_page()
+    elif page == "Auto Clash Resolver":
+        auto_clash_resolver_page()
     elif page == "Manual Entry":
         manual_entry_page()
     elif page == "Delete / Reset":
@@ -1912,11 +2530,27 @@ def main_app():
         faculty_unavailable_page()
     elif page == "Faculty Preferences":
         faculty_preferences_page()
+    elif page == "Approval Workflow":
+        approval_workflow_page()
+    elif page == "Student Portal":
+        student_portal_page()
+    elif page == "Faculty Swap Requests":
+        faculty_swap_requests_page()
+    elif page == "Leave Management":
+        leave_management_page()
+    elif page == "Attendance":
+        attendance_page()
+    elif page == "Exam Timetable":
+        exam_timetable_page()
+    elif page == "Audit Log":
+        audit_log_page()
+    elif page == "Excel Import":
+        excel_import_page()
     elif page == "Edit Records":
         edit_records_page()
     elif page == "Settings":
         settings_page()
-    # FOOTER
+
     st.markdown("""
     <hr style='border:1px solid #d4af37;'>
 
@@ -1938,6 +2572,10 @@ init_db()
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "role" not in st.session_state:
+    st.session_state.role = ""
+if "username" not in st.session_state:
+    st.session_state.username = ""
 
 if st.session_state.logged_in:
     main_app()
