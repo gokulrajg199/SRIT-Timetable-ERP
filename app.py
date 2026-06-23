@@ -6,6 +6,7 @@ import random
 from io import BytesIO
 from datetime import datetime
 from pathlib import Path
+from sqlalchemy import create_engine, text as sql_text
 
 try:
     from reportlab.lib.pagesizes import A4, landscape
@@ -246,6 +247,50 @@ div[data-testid="stDataFrame"] td{
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+# ==============================
+# SUPABASE / POSTGRES TEST LAYER
+# ==============================
+def get_supabase_engine():
+    try:
+        database_url = st.secrets.get("DATABASE_URL", "")
+        if not database_url:
+            return None, "DATABASE_URL not found in Streamlit Secrets."
+        engine = create_engine(database_url, pool_pre_ping=True)
+        return engine, None
+    except Exception as e:
+        return None, str(e)
+
+
+def supabase_query_df(query):
+    engine, err = get_supabase_engine()
+    if err:
+        raise Exception(err)
+    with engine.connect() as conn:
+        return pd.read_sql(sql_text(query), conn)
+
+
+def supabase_test_page():
+    header()
+    st.subheader("Supabase Cloud Database Test")
+
+    st.info("This page checks whether Streamlit can connect to your Supabase PostgreSQL database using DATABASE_URL from Secrets.")
+
+    try:
+        users = supabase_query_df("SELECT id, username, role, name, department, is_active FROM users ORDER BY id")
+        st.success("Connected to Supabase successfully.")
+        st.dataframe(users, use_container_width=True, hide_index=True)
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Users", len(users))
+        c2.metric("Admin", len(users[users['role'] == 'Admin']) if 'role' in users else 0)
+        c3.metric("HOD", len(users[users['role'] == 'HOD']) if 'role' in users else 0)
+        c4.metric("Faculty", len(users[users['role'] == 'Faculty']) if 'role' in users else 0)
+
+    except Exception as e:
+        st.error("Supabase connection failed.")
+        st.code(str(e))
+        st.warning("Check Streamlit Secrets, requirements.txt, and your Supabase DATABASE_URL.")
 
 def connect_db():
     return sqlite3.connect(DB_NAME, check_same_thread=False)
@@ -1090,7 +1135,7 @@ def sidebar_menu():
         "Clash Intelligence", "Faculty Workload", "Faculty Unavailable",
         "Faculty Preferences", "Approval Workflow", "Student Portal",
         "Faculty Swap Requests", "Leave Management", "Attendance",
-        "Exam Timetable", "Audit Log", "Excel Import", "Edit Records", "Settings"
+        "Exam Timetable", "Audit Log", "Excel Import", "Supabase Test", "Edit Records", "Settings"
     ]
 
     hod_menu = [
@@ -2546,6 +2591,8 @@ def main_app():
         audit_log_page()
     elif page == "Excel Import":
         excel_import_page()
+    elif page == "Supabase Test":
+        supabase_test_page()
     elif page == "Edit Records":
         edit_records_page()
     elif page == "Settings":
