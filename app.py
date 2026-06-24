@@ -2558,7 +2558,160 @@ def excel_import_page():
                 st.rerun()
         except Exception as e:
             st.error(f"Import failed: {e}")
+            
+def leave_alteration_page():
+    header()
+    st.subheader("Faculty Leave → HOD Approval → Alter Hour Allocation")
 
+    fdf = faculty_df()
+
+    if fdf.empty:
+        st.warning("Add faculty first.")
+        return
+
+    st.markdown("### Apply Faculty Leave")
+
+    with st.form("leave_apply_form"):
+        c1, c2, c3 = st.columns(3)
+
+        faculty_name = c1.selectbox("Leave Faculty", fdf["name"].tolist())
+        faculty_id = int(fdf[fdf["name"] == faculty_name]["id"].iloc[0])
+
+        leave_day = c2.selectbox("Leave Day", DAYS)
+        leave_period = c3.selectbox("Leave Period", [0] + [p for p, _ in PERIODS],
+                                    format_func=lambda x: "Full Day" if x == 0 else f"Period {x}")
+
+        reason = st.text_input("Reason", "Faculty on leave")
+
+        if st.form_submit_button("Submit Leave Request", use_container_width=True):
+            execute(
+                "INSERT INTO faculty_leave(faculty_id, day, period, reason, status) VALUES(?,?,?,?,?)",
+                (faculty_id, leave_day, leave_period, reason, "Pending")
+            )
+            st.success("Leave request submitted for HOD approval.")
+            st.rerun()
+
+    st.markdown("### HOD Approval and Alter Hour Allocation")
+
+    leave_df = query_df("""
+        SELECT fl.id, f.name AS faculty, fl.faculty_id, fl.day, fl.period, fl.reason, fl.status
+        FROM faculty_leave fl
+        JOIN faculty f ON fl.faculty_id = f.id
+        ORDER BY fl.id DESC
+    """)
+
+    st.dataframe(leave_df, use_container_width=True, hide_index=True)
+
+    if leave_df.empty:
+        return
+
+    leave_id = st.number_input("Enter Leave ID", min_value=1, step=1)
+    selected = query_df("SELECT * FROM faculty_leave WHERE id=?", (int(leave_id),))
+
+    if selected.empty:
+        st.info("Enter a valid Leave ID.")
+        return
+
+    leave = selected.iloc[0]
+    leave_faculty_id = int(leave["faculty_id"])
+    leave_day = leave["day"]
+    leave_period = int(leave["period"])
+
+    if st.button("Approve Leave", use_container_width=True):
+        execute("UPDATE faculty_leave SET status=? WHERE id=?", ("Approved", int(leave_id)))
+        st.success("Leave approved by HOD.")
+        st.rerun()
+
+    if st.button("Reject Leave", use_container_width=True):
+        execute("UPDATE faculty_leave SET status=? WHERE id=?", ("Rejected", int(leave_id)))
+        st.warning("Leave rejected.")
+        st.rerun()
+
+    st.markdown("### Affected Classes")
+
+    if leave_period == 0:
+        affected = query_df("""
+            SELECT t.id, t.section_id, t.day, t.period, t.timing,
+                   s.subject_name, f.name AS faculty
+            FROM timetable t
+            JOIN subjects s ON t.subject_id=s.id
+            JOIN faculty f ON t.faculty_id=f.id
+            WHERE t.faculty_id=? AND t.day=?
+            ORDER BY t.period
+        """, (leave_faculty_id, leave_day))
+    else:
+        affected = query_df("""
+            SELECT t.id, t.section_id, t.day, t.period, t.timing,
+                   s.subject_name, f.name AS faculty
+            FROM timetable t
+            JOIN subjects s ON t.subject_id=s.id
+            JOIN faculty f ON t.faculty_id=f.id
+            WHERE t.faculty_id=? AND t.day=? AND t.period=?
+            ORDER BY t.period
+        """, (leave_faculty_id, leave_day, leave_period))
+
+    st.dataframe(affected, use_container_width=True, hide_index=True)
+
+    if affected.empty:
+        st.info("No affected class found for this leave.")
+        return
+
+    st.markdown("### Allocate Substitute Faculty")
+
+    timetable_id = st.selectbox("Affected Timetable ID", affected["id"].tolist())
+
+    available_faculty = query_df("""
+        SELECT id, name
+        FROM faculty
+        WHERE id != ?
+        ORDER BY name
+    """, (leave_faculty_id,))
+
+    substitute_name = st.selectbox("Substitute Faculty", available_faculty["name"].tolist())
+    substitute_id = int(available_faculty[available_faculty["name"] == substitute_name]["id"].iloc[0])
+
+    if st.button("Assign Alter Hour", use_container_width=True):
+        row = query_df("SELECT * FROM timetable WHERE id=?", (int(timetable_id),)).iloc[0]
+
+        clash = query_df("""
+            SELECT id FROM timetable
+            WHERE faculty_id=? AND day=? AND period=?
+        """, (substitute_id, row["day"], int(row["period"])))
+
+        if not clash.empty:
+            st.error("Selected substitute faculty already has class in that period.")
+            return
+
+        execute("""
+            CREATE TABLE IF NOT EXISTS class_alterations(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                leave_id INTEGER,
+                timetable_id INTEGER,
+                original_faculty_id INTEGER,
+                substitute_faculty_id INTEGER,
+                alteration_day TEXT,
+                alteration_period INTEGER,
+                status TEXT DEFAULT 'Approved',
+                approved_by TEXT,
+                created_at TEXT
+            )
+        """)
+
+        execute("""
+            INSERT INTO class_alterations(
+                leave_id, timetable_id, original_faculty_id, substitute_faculty_id,
+                alteration_day, alteration_period, status, approved_by, created_at
+            )
+            VALUES(?,?,?,?,?,?,?,?,?)
+        """, (
+            int(leave_id), int(timetable_id), leave_faculty_id, substitute_id,
+            row["day"], int(row["period"]), "Approved",
+            st.session_state.get("username", "HOD"),
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ))
+
+        st.success("Alter hour allocated successfully.")
+        st.rerun()
 def settings_page():
     header()
     st.subheader("Settings")
@@ -2612,6 +2765,8 @@ def main_app():
         academic_year_page()
     elif page == "Faculty":
         faculty_page()
+    elif page == "Leave Alteration":
+        leave_alteration_page()    
     elif page == "Sections":
         sections_page()
     elif page == "Infrastructure":
