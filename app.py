@@ -2745,7 +2745,8 @@ def leave_alteration_page():
 
         st.success("Alter hour allocated successfully.")
         st.rerun()
- def leave_alteration_page():
+        
+def leave_alteration_page():
     header()
     st.subheader("Faculty Leave → Alter Class → HOD Approval")
 
