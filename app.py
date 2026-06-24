@@ -1089,65 +1089,83 @@ def analytics_data():
 
 
 def sidebar_menu():
+
     role = st.session_state.get("role", "Admin")
 
     admin_menu = [
-    "Dashboard",
-    "Department Management",
-    "Academic Year",
-    "Faculty",
-    "Sections",
-    "Infrastructure",
-    "Subjects & Constraints",
-    "Generate Timetable",
-    "Auto Clash Resolver",
-    "Manual Entry",
-    "Delete / Reset",
-    "View / Export",
-    "Clash Intelligence",
-    "Faculty Workload",
-    "Faculty Unavailable",
-    "Faculty Preferences",
-    "Approval Workflow",
-    "Student Portal",
-    "Faculty Swap Requests",
-    "Leave Management",
-    "Leave Alteration",
-    "Attendance",
-    "Exam Timetable",
-    "Audit Log",
-    "Excel Import",
-    "Supabase Test",
-    "Edit Records",
-    "Settings"
-]
+        "Dashboard",
+        "Department Management",
+        "Academic Year",
+        "Faculty",
+        "Sections",
+        "Infrastructure",
+        "Subjects & Constraints",
+        "Generate Timetable",
+        "Auto Clash Resolver",
+        "Manual Entry",
+        "Delete / Reset",
+        "View / Export",
+        "Clash Intelligence",
+        "Faculty Workload",
+        "Faculty Unavailable",
+        "Faculty Preferences",
+        "Approval Workflow",
+        "Student Portal",
+        "Faculty Swap Requests",
+        "Leave Management",
+        "Leave Alteration",
+        "Attendance",
+        "Exam Timetable",
+        "Audit Log",
+        "Excel Import",
+        "Supabase Test",
+        "Edit Records",
+        "Settings"
+    ]
+
+    principal_menu = [
+        "Dashboard",
+        "Approval Workflow",
+        "View / Export",
+        "Faculty Workload",
+        "Leave Management",
+        "Leave Alteration",
+        "Exam Timetable",
+        "Audit Log"
+    ]
+
     hod_menu = [
-        "Dashboard", "Sections", "Subjects & Constraints", "Generate Timetable",
-        "Auto Clash Resolver", "View / Export", "Clash Intelligence",
-        "Faculty Workload", "Faculty Unavailable", "Faculty Preferences",
-        "Approval Workflow", "Faculty Swap Requests", "Leave Management","Leave Alteration",
+        "Dashboard",
+        "Sections",
+        "Subjects & Constraints",
+        "Generate Timetable",
+        "Auto Clash Resolver",
+        "View / Export",
+        "Clash Intelligence",
+        "Faculty Workload",
+        "Faculty Unavailable",
+        "Faculty Preferences",
+        "Approval Workflow",
+        "Faculty Swap Requests",
+        "Leave Management",
+        "Leave Alteration",
         "Audit Log"
     ]
 
     faculty_menu = [
-        "Dashboard", "View / Export", "Faculty Unavailable",
-        "Faculty Preferences", "Faculty Swap Requests", "Leave Management",
+        "Dashboard",
+        "View / Export",
+        "Faculty Unavailable",
+        "Faculty Preferences",
+        "Faculty Swap Requests",
+        "Leave Management",
         "Attendance"
     ]
-    principal_menu = [
-    "Dashboard",
-    "Approval Workflow",
-    "View / Export",
-    "Faculty Workload",
-    "Leave Management",
-    "Leave Alteration",
-    "Exam Timetable",
-    "Audit Log"
+
+    student_menu = [
+        "Student Portal",
+        "View / Export"
     ]
-
-    student_menu = ["Student Portal", "View / Export"]
-
-student_menu = ["Student Portal", "View / Export"]
 
     if role == "Admin":
         menu = admin_menu
@@ -1161,19 +1179,23 @@ student_menu = ["Student Portal", "View / Export"]
         menu = student_menu
 
     with st.sidebar:
-        st.title("SRIT ERP")
+        st.title("🏫 SRIT ERP")
         st.caption(f"Logged in as: {role}")
 
         page = st.radio("Menu", menu)
 
         if st.button("Logout", use_container_width=True):
+            log_action(
+                "Logout",
+                f"{st.session_state.get('username','user')} logged out"
+            )
+
             st.session_state.logged_in = False
             st.session_state.role = ""
             st.session_state.username = ""
             st.rerun()
 
     return page
-
 def dashboard_page():
     header()
 
