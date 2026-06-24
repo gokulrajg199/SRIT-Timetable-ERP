@@ -1223,6 +1223,28 @@ def sidebar_menu():
 def dashboard_page():
     header()
 
+    st.markdown("""
+    <div style="
+        background:#ffffff;
+        padding:18px;
+        border-radius:14px;
+        border-left:8px solid #1b5e20;
+        border-right:3px solid #d4af37;
+        margin-bottom:20px;
+        box-shadow:0px 3px 12px rgba(0,0,0,0.12);
+    ">
+        <h2 style="color:#1b5e20; margin:0; text-align:center;">
+            🏫 SRIT Academic Resource Management System (SARMS)
+        </h2>
+        <h4 style="color:#333333; margin-top:8px; text-align:center;">
+            Smart Timetable, Approval & Academic Resource Platform
+        </h4>
+        <p style="text-align:center; font-size:17px; color:#555;">
+            Faculty Management • Timetable Generation • Approval Workflow • Leave Management • Exam Scheduling • Student Portal
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
     faculty_clashes, room_clashes, section_clashes = compute_clash_counts()
     total_clashes = faculty_clashes + room_clashes + section_clashes
 
@@ -1281,7 +1303,6 @@ def dashboard_page():
     )
 
     st.table(time_grid)
-
 def faculty_page():
     header()
     st.subheader("Faculty Management")
