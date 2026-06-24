@@ -682,7 +682,8 @@ def header():
   
 def login_page():
     header()
-        st.markdown("""
+
+    st.markdown("""
     <div style="
         background:#ffffff;
         padding:18px;
@@ -738,7 +739,6 @@ def login_page():
             "Default logins: admin/admin123 | principal/principal123 | hod/hod123 | faculty/faculty123 | student/student123"
         )
         st.markdown("</div>", unsafe_allow_html=True)
-
 
 def allocate_block(grid, day, start_period, length, session, used_faculty, used_room):
     slots = []
