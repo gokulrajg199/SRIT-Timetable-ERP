@@ -40,210 +40,111 @@ st.set_page_config(
 
 CUSTOM_CSS = """
 <style>
-
-/* GLOBAL FONT */
-html, body, [class*="css"]{
-    font-size:18px !important;
-    font-weight:500 !important;
-}
-
-/* APP BACKGROUND */
 .stApp{
-    background:#f4fbf6;
+    background:linear-gradient(135deg,#f4fbf6 0%,#eef8f0 45%,#ffffff 100%);
     color:#111111;
 }
 
-/* HEADER */
-.main-header{
-    background:linear-gradient(135deg,#1b5e20,#2e7d32,#43a047);
-    color:white !important;
-    padding:24px;
-    border-radius:18px;
-    border:3px solid #d4af37;
-    box-shadow:0px 5px 20px rgba(0,0,0,0.18);
-    text-align:center;
-    margin-bottom:20px;
+/* premium container spacing */
+.block-container{
+    padding-top:1.2rem;
+    padding-bottom:2rem;
 }
 
-.main-header h1{
-    font-size:42px !important;
-    font-weight:800 !important;
+/* glass-style cards */
+.card, div[data-testid="stMetric"]{
+    background:rgba(255,255,255,0.92) !important;
+    backdrop-filter:blur(10px);
+    border:2px solid #d4af37 !important;
+    border-radius:18px !important;
+    box-shadow:0 8px 24px rgba(0,0,0,0.12) !important;
 }
 
-.main-header h2{
-    font-size:34px !important;
-    font-weight:700 !important;
-}
-
-.main-header h3,
-.main-header h4,
-.main-header p{
-    color:white !important;
-    margin:4px;
-    font-size:22px !important;
-}
-
-/* SIDEBAR */
+/* sidebar premium */
 section[data-testid="stSidebar"]{
-    background:#1b5e20;
+    background:linear-gradient(180deg,#0f3d17,#1b5e20,#2e7d32);
+    border-right:4px solid #d4af37;
 }
 
 section[data-testid="stSidebar"] *{
     color:white !important;
-    font-size:18px !important;
-    font-weight:600 !important;
-}
-
-/* PAGE TITLES */
-h1{
-    font-size:40px !important;
-    font-weight:800 !important;
-    color:#1b5e20 !important;
-}
-
-h2{
-    font-size:34px !important;
-    font-weight:700 !important;
-    color:#1b5e20 !important;
-}
-
-h3{
-    font-size:28px !important;
-    font-weight:700 !important;
-    color:#1b5e20 !important;
-}
-
-/* LABELS */
-label{
-    font-size:18px !important;
-    font-weight:600 !important;
-}
-
-/* METRICS */
-div[data-testid="stMetric"]{
-    background:white;
-    border:2px solid #d4af37;
-    border-left:7px solid #d4af37;
-    border-radius:14px;
-    padding:15px;
-    box-shadow:0px 3px 12px rgba(0,0,0,0.08);
-}
-
-div[data-testid="stMetric"] label{
-    font-size:18px !important;
     font-weight:700 !important;
 }
 
-div[data-testid="stMetricValue"]{
-    font-size:32px !important;
-    font-weight:800 !important;
-}
-
-/* BUTTONS */
+/* buttons */
 .stButton button{
-    background:linear-gradient(135deg,#2e7d32,#43a047);
+    background:linear-gradient(135deg,#1b5e20,#43a047);
     color:white !important;
     border:2px solid #d4af37;
-    border-radius:10px;
-    font-weight:bold;
-    font-size:18px !important;
+    border-radius:14px;
+    font-weight:800;
+    box-shadow:0 6px 14px rgba(0,0,0,0.18);
+    transition:all 0.25s ease;
 }
 
-.stDownloadButton button{
-    background:#d4af37;
-    color:#111111 !important;
-    border-radius:10px;
-    font-weight:bold;
-    font-size:18px !important;
+.stButton button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 10px 22px rgba(0,0,0,0.24);
+    border-color:white;
 }
 
-/* INPUT BOXES */
-input{
-    font-size:18px !important;
-    font-weight:600 !important;
+/* headings */
+h1,h2,h3{
+    color:#1b5e20 !important;
+    font-weight:900 !important;
+    letter-spacing:0.3px;
 }
 
-/* SELECT BOX */
-div[data-baseweb="select"]{
-    font-size:18px !important;
+/* metric numbers */
+div[data-testid="stMetricValue"]{
+    color:#1b5e20 !important;
+    font-size:34px !important;
+    font-weight:900 !important;
 }
 
-/* DATAFRAMES */
-div[data-testid="stDataFrame"] table{
-    font-size:20px !important;
-    font-weight:600 !important;
+/* tables / grids */
+table{
+    width:100% !important;
+    border-collapse:collapse !important;
+    border-radius:12px !important;
+    overflow:hidden !important;
 }
 
-div[data-testid="stDataFrame"] th{
-    text-align:center !important;
-    font-size:22px !important;
-    font-weight:800 !important;
+th{
     background:#1b5e20 !important;
     color:white !important;
-}
-
-div[data-testid="stDataFrame"] td{
     text-align:center !important;
-    font-size:18px !important;
-    font-weight:600 !important;
+    font-size:19px !important;
+    padding:13px !important;
+    border:1px solid #d4af37 !important;
 }
 
-/* CARDS */
-.card{
-    background:white;
-    border:2px solid #d4af37;
+td{
+    text-align:center !important;
+    font-size:17px !important;
+    font-weight:700 !important;
+    padding:12px !important;
+    border:1px solid #d4af37 !important;
+}
+
+/* dataframe readability */
+div[data-testid="stDataFrame"]{
     border-radius:16px;
-    padding:18px;
-    box-shadow:0px 3px 12px rgba(0,0,0,0.08);
-    margin-bottom:14px;
+    overflow:hidden;
+    box-shadow:0 6px 18px rgba(0,0,0,0.10);
 }
 
-/* INFO BOX */
-.success-box{
-    background:#e8f5e9;
-    color:#1b5e20;
-    padding:12px;
-    border-radius:10px;
-    border-left:5px solid #2e7d32;
-    font-size:18px;
+/* inputs */
+input, textarea{
+    border-radius:10px !important;
+    font-size:17px !important;
 }
 
-.warning-box{
-    background:#fff8e1;
-    color:#7a5800;
-    padding:12px;
-    border-radius:10px;
-    border-left:5px solid #d4af37;
-    font-size:18px;
+/* info boxes */
+div[data-testid="stAlert"]{
+    border-radius:14px !important;
+    box-shadow:0 4px 14px rgba(0,0,0,0.08);
 }
-
-/* TIMETABLE COLORS */
-.metric-icon{
-    font-size:28px;
-    font-weight:800;
-    color:#1b5e20;
-}
-
-.theory-cell{
-    background:#e3f2fd;
-    color:#0d47a1;
-}
-
-.lab-cell{
-    background:#e8f5e9;
-    color:#1b5e20;
-}
-
-.practical-cell{
-    background:#fff3e0;
-    color:#e65100;
-}
-
-.manual-cell{
-    background:#fff8e1;
-    color:#7a5800;
-}
-
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
