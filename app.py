@@ -568,9 +568,10 @@ def init_db():
     conn.commit()
     conn.close()
 
-    add_col("sections", "year", "TEXT")
+       add_col("sections", "year", "TEXT")
     add_col("rooms", "capacity", "INTEGER DEFAULT 60")
     add_col("rooms", "equipment", "TEXT DEFAULT ''")
+
     add_col("subjects", "theory_hours", "INTEGER DEFAULT 0")
     add_col("subjects", "lab_hours", "INTEGER DEFAULT 0")
     add_col("subjects", "theory_continuous_required", "INTEGER DEFAULT 0")
@@ -580,21 +581,26 @@ def init_db():
     add_col("subjects", "lab_continuous_hours", "INTEGER DEFAULT 4")
     add_col("subjects", "lab_faculty_id", "INTEGER")
     add_col("subjects", "lab_room_id", "INTEGER")
+
     add_col("timetable", "session_type", "TEXT DEFAULT 'Theory'")
     add_col("timetable", "block_label", "TEXT DEFAULT ''")
     add_col("timetable", "entry_mode", "TEXT DEFAULT 'Auto'")
+
     add_col("faculty_preferences", "preferred_day", "TEXT DEFAULT ''")
     add_col("faculty_preferences", "preferred_period", "INTEGER")
     add_col("faculty_preferences", "avoid_last_period", "INTEGER DEFAULT 0")
     add_col("faculty_preferences", "remarks", "TEXT DEFAULT ''")
+
     add_col("sections", "academic_year", "TEXT DEFAULT '2026-2027'")
     add_col("sections", "semester_type", "TEXT DEFAULT 'Odd Semester'")
     add_col("sections", "is_published", "INTEGER DEFAULT 0")
+
     add_col("timetable_approvals", "status", "TEXT DEFAULT 'Draft'")
     add_col("timetable_approvals", "hod_comment", "TEXT DEFAULT ''")
     add_col("timetable_approvals", "principal_comment", "TEXT DEFAULT ''")
     add_col("timetable_approvals", "updated_at", "TEXT")
 
+    add_col("exam_timetable", "exam_type", "TEXT DEFAULT 'CIA 1'")
 
 def clean_int(value):
     if value is None:
