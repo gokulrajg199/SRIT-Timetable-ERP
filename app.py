@@ -1134,18 +1134,30 @@ def sidebar_menu():
         "Faculty Preferences", "Faculty Swap Requests", "Leave Management",
         "Attendance"
     ]
+    principal_menu = [
+    "Dashboard",
+    "Approval Workflow",
+    "View / Export",
+    "Faculty Workload",
+    "Leave Management",
+    "Leave Alteration",
+    "Exam Timetable",
+    "Audit Log"
+    ]
 
     student_menu = ["Student Portal", "View / Export"]
 
-    if role == "Admin":
-        menu = admin_menu
-    elif role == "HOD":
-        menu = hod_menu
-    elif role == "Faculty":
-        menu = faculty_menu
-    else:
-        menu = student_menu
-
+  if role == "Admin":
+    menu = admin_menu
+elif role == "Principal":
+    menu = principal_menu
+elif role == "HOD":
+    menu = hod_menu
+elif role == "Faculty":
+    menu = faculty_menu
+else:
+    menu = student_menu
+    
     with st.sidebar:
         st.title("SRIT ERP")
         st.caption(f"Logged in as: {role}")
