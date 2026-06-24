@@ -299,7 +299,9 @@ def connect_db():
 def execute(query, params=()):
     conn = connect_db()
     cur = conn.cursor()
+
     cur.execute(query, params)
+
     cur.executemany(
         "INSERT OR IGNORE INTO departments(department_name, hod_name, status) VALUES(?,?,?)",
         [
@@ -309,20 +311,20 @@ def execute(query, params=()):
             ("ECE", "HOD ECE", "Active"),
             ("EEE", "HOD EEE", "Active"),
             ("MECH", "HOD MECH", "Active"),
-       
         ]
     )
 
-   cur.executemany(
-    "INSERT OR IGNORE INTO users(username, password, role, name, department) VALUES(?,?,?,?,?)",
-    [
-        ("admin", "admin123", "Admin", "System Admin", "CSE"),
-        ("principal", "principal123", "Principal", "Principal", "Administration"),
-        ("hod", "hod123", "HOD", "HOD User", "CSE"),
-        ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
-        ("student", "student123", "Student", "Student User", "CSE"),
-    ]
-)
+    cur.executemany(
+        "INSERT OR IGNORE INTO users(username, password, role, name, department) VALUES(?,?,?,?,?)",
+        [
+            ("admin", "admin123", "Admin", "System Admin", "CSE"),
+            ("principal", "principal123", "Principal", "Principal", "Administration"),
+            ("hod", "hod123", "HOD", "HOD User", "CSE"),
+            ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
+            ("student", "student123", "Student", "Student User", "CSE"),
+        ]
+    )
+
     cur.execute(
         "INSERT OR IGNORE INTO academic_years(year_name, semester_type, is_active) VALUES(?,?,?)",
         ("2026-2027", "Odd Semester", 1)
@@ -330,7 +332,6 @@ def execute(query, params=()):
 
     conn.commit()
     conn.close()
-
 
 def execute_many(query, values):
     conn = connect_db()
