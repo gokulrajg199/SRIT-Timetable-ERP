@@ -1149,18 +1149,17 @@ def sidebar_menu():
 
 student_menu = ["Student Portal", "View / Export"]
 
-if role == "Admin":
+    if role == "Admin":
     menu = admin_menu
-elif role == "Principal":
+    elif role == "Principal":
     menu = principal_menu
-elif role == "HOD":
+    elif role == "HOD":
     menu = hod_menu
-elif role == "Faculty":
+    elif role == "Faculty":
     menu = faculty_menu
 else:
     menu = student_menu
-
-with st.sidebar:
+    with st.sidebar:
     st.title("SRIT ERP")
     st.caption(f"Logged in as: {role}")
 
@@ -1176,7 +1175,7 @@ with st.sidebar:
         st.session_state.username = ""
         st.rerun()
 
-return page
+    return page
 
 
 def dashboard_page():
