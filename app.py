@@ -2431,34 +2431,48 @@ def exam_timetable_page():
         return
 
     with st.form("exam_form"):
+        exam_type = st.selectbox(
+            "Exam Type",
+            ["CIA 1", "CIA 2", "Model Examination", "University Examination"]
+        )
+
         subject_label = st.selectbox("Subject", subdf["label"].tolist())
         subject_id = int(subdf[subdf["label"] == subject_label]["id"].iloc[0])
+
         exam_date = st.date_input("Exam Date")
         exam_time = st.text_input("Exam Time", "10:00 AM - 01:00 PM")
+
         room_name = st.selectbox("Room", ["None"] + rdf["room_name"].tolist())
         room_id = None if room_name == "None" else int(rdf[rdf["room_name"] == room_name]["id"].iloc[0])
 
         if st.form_submit_button("Save Exam Timetable", use_container_width=True):
             execute(
-                "INSERT INTO exam_timetable(section_id, subject_id, exam_date, exam_time, room_id) VALUES(?,?,?,?,?)",
-                (section_id, subject_id, str(exam_date), exam_time, room_id)
+                """
+                INSERT INTO exam_timetable(
+                    section_id, subject_id, exam_type, exam_date, exam_time, room_id
+                )
+                VALUES(?,?,?,?,?,?)
+                """,
+                (section_id, subject_id, exam_type, str(exam_date), exam_time, room_id)
             )
-            log_action("Exam Timetable Added", subject_label)
+            log_action("Exam Timetable Added", f"{exam_type} - {subject_label}")
             st.success("Exam timetable saved.")
             st.rerun()
 
     data = query_df("""
-        SELECT et.id, sec.year, sec.department, sec.semester, sec.section,
-               s.subject_code, s.subject_name, et.exam_date, et.exam_time,
+        SELECT et.id, et.exam_type,
+               sec.year, sec.department, sec.semester, sec.section,
+               s.subject_code, s.subject_name,
+               et.exam_date, et.exam_time,
                COALESCE(r.room_name, '') AS room
         FROM exam_timetable et
         JOIN sections sec ON et.section_id=sec.id
         JOIN subjects s ON et.subject_id=s.id
         LEFT JOIN rooms r ON et.room_id=r.id
-        ORDER BY et.exam_date
+        ORDER BY et.exam_type, et.exam_date
     """)
-    st.dataframe(data, use_container_width=True, hide_index=True)
 
+    st.dataframe(data, use_container_width=True, hide_index=True)
 
 def audit_log_page():
     header()
