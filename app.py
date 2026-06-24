@@ -51,13 +51,28 @@ CUSTOM_CSS = """
     padding-bottom:2rem;
 }
 
-/* glass-style cards */
-.card, div[data-testid="stMetric"]{
-    background:rgba(255,255,255,0.92) !important;
-    backdrop-filter:blur(10px);
+/* DASHBOARD CARDS */
+.card{
+    background:white !important;
     border:2px solid #d4af37 !important;
     border-radius:18px !important;
-    box-shadow:0 8px 24px rgba(0,0,0,0.12) !important;
+    box-shadow:0 5px 15px rgba(0,0,0,0.10) !important;
+}
+
+/* METRIC CARDS */
+div[data-testid="stMetric"]{
+    background:white !important;
+    border:2px solid #d4af37 !important;
+    border-left:6px solid #1b5e20 !important;
+    border-radius:12px !important;
+    padding:10px !important;
+    min-height:80px !important;
+}
+
+div[data-testid="stMetricValue"]{
+    font-size:28px !important;
+    font-weight:800 !important;
+    color:#1b5e20 !important;
 }
 
 /* sidebar premium */
