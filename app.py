@@ -568,7 +568,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-       add_col("sections", "year", "TEXT")
+    add_col("sections", "year", "TEXT")
     add_col("rooms", "capacity", "INTEGER DEFAULT 60")
     add_col("rooms", "equipment", "TEXT DEFAULT ''")
 
