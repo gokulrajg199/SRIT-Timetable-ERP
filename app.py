@@ -313,16 +313,16 @@ def execute(query, params=()):
         ]
     )
 
-    cur.executemany(
-        "INSERT OR IGNORE INTO users(username, password, role, name, department) VALUES(?,?,?,?,?)",
-        [
-            ("admin", "admin123", "Admin", "System Admin", "CSE"),
-            ("hod", "hod123", "HOD", "HOD User", "CSE"),
-            ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
-            ("student", "student123", "Student", "Student User", "CSE"),
-        ]
-    )
-
+   cur.executemany(
+    "INSERT OR IGNORE INTO users(username, password, role, name, department) VALUES(?,?,?,?,?)",
+    [
+        ("admin", "admin123", "Admin", "System Admin", "CSE"),
+        ("principal", "principal123", "Principal", "Principal", "Administration"),
+        ("hod", "hod123", "HOD", "HOD User", "CSE"),
+        ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
+        ("student", "student123", "Student", "Student User", "CSE"),
+    ]
+)
     cur.execute(
         "INSERT OR IGNORE INTO academic_years(year_name, semester_type, is_active) VALUES(?,?,?)",
         ("2026-2027", "Odd Semester", 1)
@@ -2121,7 +2121,7 @@ def academic_year_page():
 
 def approval_workflow_page():
     header()
-    st.subheader("Approval Workflow")
+    st.subheader("📋 Timetable Approval Workflow")
 
     sdf = section_label_df()
     if sdf.empty:
@@ -2131,46 +2131,96 @@ def approval_workflow_page():
     section_name = st.selectbox("Select Class / Section", sdf["label"].tolist())
     section_id = int(sdf[sdf["label"] == section_name]["id"].iloc[0])
 
-    approval = query_df("SELECT * FROM timetable_approvals WHERE section_id=?", (section_id,))
-    current_status = "Draft" if approval.empty else approval.iloc[0]["status"]
+    approval = query_df(
+        "SELECT * FROM timetable_approvals WHERE section_id=?",
+        (section_id,)
+    )
+
+    if approval.empty:
+        execute(
+            "INSERT OR IGNORE INTO timetable_approvals(section_id, status, updated_at) VALUES(?,?,?)",
+            (section_id, "Draft", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        current_status = "Draft"
+    else:
+        current_status = approval.iloc[0]["status"]
 
     st.info(f"Current Status: {current_status}")
 
-    c1, c2 = st.columns(2)
-    hod_comment = c1.text_area("HOD Comment", "")
-    principal_comment = c2.text_area("Principal Comment", "")
+    role = st.session_state.get("role", "Admin")
+    username = st.session_state.get("username", "admin")
 
-    status_options = ["Draft", "Submitted", "Approved by HOD", "Approved by Principal", "Published", "Rejected"]
-    new_status = st.selectbox(
-        "Update Status",
-        status_options,
-        index=status_options.index(current_status) if current_status in status_options else 0
-    )
+    st.markdown("### Approval Actions")
 
-    if st.button("Update Approval Status", use_container_width=True):
-        execute("""
-            INSERT INTO timetable_approvals(section_id, status, hod_comment, principal_comment, updated_at)
-            VALUES(?,?,?,?,?)
-            ON CONFLICT(section_id) DO UPDATE SET
-                status=excluded.status,
-                hod_comment=excluded.hod_comment,
-                principal_comment=excluded.principal_comment,
-                updated_at=excluded.updated_at
-        """, (section_id, new_status, hod_comment, principal_comment, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    if current_status == "Draft":
+        if st.button("Submit to HOD", use_container_width=True):
+            execute(
+                "UPDATE timetable_approvals SET status=?, updated_at=? WHERE section_id=?",
+                ("Submitted to HOD", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), section_id)
+            )
+            st.success("Submitted to HOD.")
+            st.rerun()
 
-        execute("UPDATE sections SET is_published=? WHERE id=?", (1 if new_status == "Published" else 0, section_id))
-        log_action("Approval Updated", f"{section_name}: {new_status}")
-        st.success("Approval status updated.")
-        st.rerun()
+    elif current_status == "Submitted to HOD":
+        if role in ["Admin", "HOD"]:
+            hod_comment = st.text_area("HOD Comment")
+            if st.button("Approve by HOD", use_container_width=True):
+                execute(
+                    "UPDATE timetable_approvals SET status=?, hod_comment=?, updated_at=? WHERE section_id=?",
+                    ("Approved by HOD", hod_comment, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), section_id)
+                )
+                st.success("Approved by HOD.")
+                st.rerun()
+        else:
+            st.warning("Waiting for HOD approval.")
 
-    st.markdown("### Approval Summary")
+    elif current_status == "Approved by HOD":
+        if role in ["Admin", "Principal"]:
+            principal_comment = st.text_area("Principal Comment")
+            if st.button("Approve by Principal", use_container_width=True):
+                execute(
+                    "UPDATE timetable_approvals SET status=?, principal_comment=?, updated_at=? WHERE section_id=?",
+                    ("Approved by Principal", principal_comment, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), section_id)
+                )
+                st.success("Approved by Principal.")
+                st.rerun()
+        else:
+            st.warning("Waiting for Principal approval.")
+
+    elif current_status == "Approved by Principal":
+        if role in ["Admin", "Principal"]:
+            if st.button("Publish Timetable", use_container_width=True):
+                execute(
+                    "UPDATE timetable_approvals SET status=?, updated_at=? WHERE section_id=?",
+                    ("Published", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), section_id)
+                )
+                execute("UPDATE sections SET is_published=1 WHERE id=?", (section_id,))
+                st.success("Timetable Published.")
+                st.rerun()
+
+    elif current_status == "Published":
+        st.success("✅ Timetable already published.")
+
+        if role == "Admin":
+            if st.button("Reset to Draft", use_container_width=True):
+                execute(
+                    "UPDATE timetable_approvals SET status=?, updated_at=? WHERE section_id=?",
+                    ("Draft", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), section_id)
+                )
+                execute("UPDATE sections SET is_published=0 WHERE id=?", (section_id,))
+                st.warning("Reset to Draft.")
+                st.rerun()
+
+    st.markdown("### Approval Records")
+
     df = query_df("""
         SELECT ta.id, sec.year, sec.department, sec.semester, sec.section,
                ta.status, ta.hod_comment, ta.principal_comment, ta.updated_at
         FROM timetable_approvals ta
-        JOIN sections sec ON ta.section_id=sec.id
-        ORDER BY ta.updated_at DESC
+        JOIN sections sec ON ta.section_id = sec.id
+        ORDER BY ta.id DESC
     """)
+
     st.dataframe(df, use_container_width=True, hide_index=True)
 
 
