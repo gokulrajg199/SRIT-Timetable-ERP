@@ -1268,6 +1268,15 @@ def dashboard_page():
     </div>
     """, unsafe_allow_html=True)
 
+    p1, p2, p3, p4 = st.columns(4)
+
+    p1.metric("🏢 Departments", len(query_df("SELECT * FROM departments")))
+    p2.metric("🎓 Academic Years", len(query_df("SELECT * FROM academic_years")))
+    p3.metric("⏳ Pending Approvals", len(query_df("SELECT * FROM timetable_approvals WHERE status!='Published'")))
+    p4.metric("✅ Published Timetables", len(query_df("SELECT * FROM sections WHERE is_published=1")))
+
+    st.divider()
+
     faculty_clashes, room_clashes, section_clashes = compute_clash_counts()
     total_clashes = faculty_clashes + room_clashes + section_clashes
 
