@@ -1150,33 +1150,29 @@ def sidebar_menu():
 student_menu = ["Student Portal", "View / Export"]
 
     if role == "Admin":
-    menu = admin_menu
+        menu = admin_menu
     elif role == "Principal":
-    menu = principal_menu
+        menu = principal_menu
     elif role == "HOD":
-    menu = hod_menu
+        menu = hod_menu
     elif role == "Faculty":
-    menu = faculty_menu
-else:
-    menu = student_menu
+        menu = faculty_menu
+    else:
+        menu = student_menu
+
     with st.sidebar:
-    st.title("SRIT ERP")
-    st.caption(f"Logged in as: {role}")
+        st.title("SRIT ERP")
+        st.caption(f"Logged in as: {role}")
 
-    page = st.radio("Menu", menu)
+        page = st.radio("Menu", menu)
 
-    if st.button("Logout", use_container_width=True):
-        log_action(
-            "Logout",
-            f"{st.session_state.get('username','user')} logged out"
-        )
-        st.session_state.logged_in = False
-        st.session_state.role = ""
-        st.session_state.username = ""
-        st.rerun()
+        if st.button("Logout", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.role = ""
+            st.session_state.username = ""
+            st.rerun()
 
     return page
-
 
 def dashboard_page():
     header()
