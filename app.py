@@ -1249,6 +1249,34 @@ def dashboard_page():
 
     st.table(time_grid)
 
+def faculty_page():
+    header()
+    st.subheader("Faculty Management")
+
+    with st.form("faculty_form"):
+        c1, c2, c3, c4 = st.columns(4)
+
+        name = c1.text_input("Faculty Name")
+        designation = c2.text_input("Designation", "AP/CSE")
+        department = c3.text_input("Department", "CSE")
+        max_hours = c4.number_input("Max Hours / Week", 1, 40, 24)
+
+        if st.form_submit_button("Save Faculty", use_container_width=True) and name:
+            try:
+                execute(
+                    "INSERT INTO faculty(name, designation, department, max_hours) VALUES(?,?,?,?)",
+                    (name, designation, department, max_hours)
+                )
+                st.success("Faculty saved.")
+                st.rerun()
+            except sqlite3.IntegrityError:
+                st.error("Faculty already exists.")
+
+    st.dataframe(
+        query_df("SELECT * FROM faculty ORDER BY name"),
+        use_container_width=True,
+        hide_index=True
+    )
 
 def sections_page():
     header()
