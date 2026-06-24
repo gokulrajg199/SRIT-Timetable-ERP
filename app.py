@@ -564,6 +564,20 @@ def init_db():
         room_id INTEGER
     )
     """)
+    cur.execute("""
+CREATE TABLE IF NOT EXISTS leave_alteration_requests(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    leave_id INTEGER,
+    timetable_id INTEGER,
+    original_faculty_id INTEGER,
+    substitute_faculty_id INTEGER,
+    day TEXT,
+    period INTEGER,
+    status TEXT DEFAULT 'Pending',
+    hod_remark TEXT DEFAULT '',
+    created_at TEXT
+)
+""")
 
     conn.commit()
     conn.close()
@@ -1139,21 +1153,40 @@ def sidebar_menu():
     role = st.session_state.get("role", "Admin")
 
     admin_menu = [
-        "Dashboard", "Department Management", "Academic Year",
-        "Faculty", "Sections", "Infrastructure",
-        "Subjects & Constraints", "Generate Timetable", "Auto Clash Resolver",
-        "Manual Entry", "Delete / Reset", "View / Export",
-        "Clash Intelligence", "Faculty Workload", "Faculty Unavailable",
-        "Faculty Preferences", "Approval Workflow", "Student Portal",
-        "Faculty Swap Requests", "Leave Management", "Attendance",
-        "Exam Timetable", "Audit Log", "Excel Import", "Supabase Test", "Edit Records", "Settings"
-    ]
-
+    "Dashboard",
+    "Department Management",
+    "Academic Year",
+    "Faculty",
+    "Sections",
+    "Infrastructure",
+    "Subjects & Constraints",
+    "Generate Timetable",
+    "Auto Clash Resolver",
+    "Manual Entry",
+    "Delete / Reset",
+    "View / Export",
+    "Clash Intelligence",
+    "Faculty Workload",
+    "Faculty Unavailable",
+    "Faculty Preferences",
+    "Approval Workflow",
+    "Student Portal",
+    "Faculty Swap Requests",
+    "Leave Management",
+    "Leave Alteration",
+    "Attendance",
+    "Exam Timetable",
+    "Audit Log",
+    "Excel Import",
+    "Supabase Test",
+    "Edit Records",
+    "Settings"
+]
     hod_menu = [
         "Dashboard", "Sections", "Subjects & Constraints", "Generate Timetable",
         "Auto Clash Resolver", "View / Export", "Clash Intelligence",
         "Faculty Workload", "Faculty Unavailable", "Faculty Preferences",
-        "Approval Workflow", "Faculty Swap Requests", "Leave Management",
+        "Approval Workflow", "Faculty Swap Requests", "Leave Management","Leave Alteration",
         "Audit Log"
     ]
 
@@ -2712,6 +2745,217 @@ def leave_alteration_page():
 
         st.success("Alter hour allocated successfully.")
         st.rerun()
+ def leave_alteration_page():
+    header()
+    st.subheader("Faculty Leave → Alter Class → HOD Approval")
+
+    fdf = faculty_df()
+
+    if fdf.empty:
+        st.warning("Add faculty first.")
+        return
+
+    st.markdown("### Apply Leave with Mandatory Alteration")
+
+    with st.form("leave_alter_form"):
+        c1, c2, c3 = st.columns(3)
+
+        faculty_name = c1.selectbox("Faculty Applying Leave", fdf["name"].tolist())
+        faculty_id = int(fdf[fdf["name"] == faculty_name]["id"].iloc[0])
+
+        leave_day = c2.selectbox("Leave Day", DAYS)
+        leave_period = c3.selectbox(
+            "Leave Period",
+            [0] + [p for p, _ in PERIODS],
+            format_func=lambda x: "Full Day" if x == 0 else f"Period {x}"
+        )
+
+        reason = st.text_input("Reason", "Faculty on leave")
+
+        submitted = st.form_submit_button("Check Periods & Submit Leave")
+
+    if submitted:
+        if leave_period == 0:
+            affected = query_df("""
+                SELECT t.id, t.day, t.period, t.timing, s.subject_name
+                FROM timetable t
+                JOIN subjects s ON t.subject_id=s.id
+                WHERE t.faculty_id=? AND t.day=?
+                ORDER BY t.period
+            """, (faculty_id, leave_day))
+        else:
+            affected = query_df("""
+                SELECT t.id, t.day, t.period, t.timing, s.subject_name
+                FROM timetable t
+                JOIN subjects s ON t.subject_id=s.id
+                WHERE t.faculty_id=? AND t.day=? AND t.period=?
+                ORDER BY t.period
+            """, (faculty_id, leave_day, leave_period))
+
+        st.session_state.leave_check = {
+            "faculty_id": faculty_id,
+            "faculty_name": faculty_name,
+            "leave_day": leave_day,
+            "leave_period": leave_period,
+            "reason": reason,
+            "affected": affected
+        }
+
+    if "leave_check" in st.session_state:
+        data = st.session_state.leave_check
+        affected = data["affected"]
+
+        if affected.empty:
+            st.success("No classes found on selected leave period/day. Leave can be submitted directly.")
+
+            if st.button("Submit Leave Without Alteration", use_container_width=True):
+                execute(
+                    "INSERT INTO faculty_leave(faculty_id, day, period, reason, status) VALUES(?,?,?,?,?)",
+                    (data["faculty_id"], data["leave_day"], data["leave_period"], data["reason"], "Pending")
+                )
+                st.success("Leave request submitted to HOD.")
+                del st.session_state.leave_check
+                st.rerun()
+
+        else:
+            st.error(
+                f"{data['faculty_name']} has {len(affected)} class period(s) on {data['leave_day']}. "
+                "Alter faculty must be selected before submitting leave."
+            )
+
+            st.dataframe(affected, use_container_width=True, hide_index=True)
+
+            st.markdown("### Select Substitute Faculty")
+
+            substitute_map = {}
+
+            for _, row in affected.iterrows():
+                period = int(row["period"])
+
+                available = query_df("""
+                    SELECT id, name
+                    FROM faculty
+                    WHERE id != ?
+                    AND id NOT IN (
+                        SELECT faculty_id FROM timetable
+                        WHERE day=? AND period=?
+                    )
+                    AND id NOT IN (
+                        SELECT faculty_id FROM faculty_unavailable
+                        WHERE day=? AND period=?
+                    )
+                    ORDER BY name
+                """, (
+                    data["faculty_id"],
+                    data["leave_day"], period,
+                    data["leave_day"], period
+                ))
+
+                if available.empty:
+                    st.warning(f"No free substitute faculty available for Period {period}.")
+                    substitute_map[int(row["id"])] = None
+                else:
+                    sub_name = st.selectbox(
+                        f"Substitute for Period {period} - {row['subject_name']}",
+                        available["name"].tolist(),
+                        key=f"substitute_{row['id']}"
+                    )
+                    substitute_id = int(available[available["name"] == sub_name]["id"].iloc[0])
+                    substitute_map[int(row["id"])] = substitute_id
+
+            if st.button("Submit Leave With Alteration Request", use_container_width=True):
+                if any(v is None for v in substitute_map.values()):
+                    st.error("Please select substitute faculty for all affected periods.")
+                    return
+
+                execute(
+                    "INSERT INTO faculty_leave(faculty_id, day, period, reason, status) VALUES(?,?,?,?,?)",
+                    (data["faculty_id"], data["leave_day"], data["leave_period"], data["reason"], "Pending")
+                )
+
+                leave_id = query_df("SELECT MAX(id) AS id FROM faculty_leave").iloc[0]["id"]
+
+                for _, row in affected.iterrows():
+                    timetable_id = int(row["id"])
+                    substitute_id = substitute_map[timetable_id]
+
+                    execute("""
+                        INSERT INTO leave_alteration_requests(
+                            leave_id, timetable_id, original_faculty_id,
+                            substitute_faculty_id, day, period, status, created_at
+                        )
+                        VALUES(?,?,?,?,?,?,?,?)
+                    """, (
+                        int(leave_id),
+                        timetable_id,
+                        data["faculty_id"],
+                        substitute_id,
+                        data["leave_day"],
+                        int(row["period"]),
+                        "Pending",
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    ))
+
+                st.success("Leave and alteration request submitted to HOD for approval.")
+                del st.session_state.leave_check
+                st.rerun()
+
+    st.markdown("### HOD Approval Panel")
+
+    requests = query_df("""
+        SELECT lar.id, lar.leave_id, of.name AS original_faculty,
+               sf.name AS substitute_faculty,
+               lar.day, lar.period, lar.status, lar.hod_remark,
+               s.subject_name
+        FROM leave_alteration_requests lar
+        JOIN faculty of ON lar.original_faculty_id=of.id
+        JOIN faculty sf ON lar.substitute_faculty_id=sf.id
+        JOIN timetable t ON lar.timetable_id=t.id
+        JOIN subjects s ON t.subject_id=s.id
+        ORDER BY lar.id DESC
+    """)
+
+    st.dataframe(requests, use_container_width=True, hide_index=True)
+
+    if not requests.empty:
+        req_id = st.number_input("Enter Alteration Request ID", min_value=1, step=1)
+        action = st.selectbox("HOD Action", ["Approve", "Reject"])
+        remark = st.text_input("HOD Remark", "")
+
+        if st.button("Submit HOD Decision", use_container_width=True):
+            status = "Approved" if action == "Approve" else "Rejected"
+
+            execute(
+                "UPDATE leave_alteration_requests SET status=?, hod_remark=? WHERE id=?",
+                (status, remark, int(req_id))
+            )
+
+            leave_id_df = query_df(
+                "SELECT leave_id FROM leave_alteration_requests WHERE id=?",
+                (int(req_id),)
+            )
+
+            if not leave_id_df.empty:
+                leave_id = int(leave_id_df.iloc[0]["leave_id"])
+
+                pending = query_df("""
+                    SELECT id FROM leave_alteration_requests
+                    WHERE leave_id=? AND status='Pending'
+                """, (leave_id,))
+
+                rejected = query_df("""
+                    SELECT id FROM leave_alteration_requests
+                    WHERE leave_id=? AND status='Rejected'
+                """, (leave_id,))
+
+                if not rejected.empty:
+                    execute("UPDATE faculty_leave SET status=? WHERE id=?", ("Rejected", leave_id))
+                elif pending.empty:
+                    execute("UPDATE faculty_leave SET status=? WHERE id=?", ("Approved", leave_id))
+
+            st.success("HOD decision updated.")
+            st.rerun()
+            
 def settings_page():
     header()
     st.subheader("Settings")
@@ -2799,6 +3043,8 @@ def main_app():
         faculty_swap_requests_page()
     elif page == "Leave Management":
         leave_management_page()
+    elif page == "Leave Alteration":
+        leave_alteration_page()
     elif page == "Attendance":
         attendance_page()
     elif page == "Exam Timetable":
