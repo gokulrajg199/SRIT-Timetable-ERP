@@ -682,6 +682,29 @@ def header():
   
 def login_page():
     header()
+        st.markdown("""
+    <div style="
+        background:#ffffff;
+        padding:18px;
+        border-radius:14px;
+        border-left:8px solid #1b5e20;
+        border-right:3px solid #d4af37;
+        margin-bottom:20px;
+        box-shadow:0px 3px 12px rgba(0,0,0,0.12);
+        text-align:center;
+    ">
+        <h2 style="color:#1b5e20; margin:0;">
+            🏫 SRIT Academic Resource Management System (SARMS)
+        </h2>
+        <h4 style="color:#333333; margin-top:8px;">
+            Smart Timetable, Approval & Academic Resource Platform
+        </h4>
+        <p style="font-size:17px; color:#555; margin-top:8px;">
+            Faculty Management • Timetable Generation • Approval Workflow • Leave Management • Exam Scheduling • Student Portal
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns([1, 1.1, 1])
 
     with col2:
