@@ -1262,34 +1262,132 @@ def dashboard_page():
     </div>
     """, unsafe_allow_html=True)
 
-    p1, p2, p3, p4 = st.columns(4)
+    dept = current_department()
 
-    p1.metric("🏢 Departments", len(query_df("SELECT * FROM departments")))
-    p2.metric("🎓 Academic Years", len(query_df("SELECT * FROM academic_years")))
-    p3.metric("⏳ Pending Approvals", len(query_df("SELECT * FROM timetable_approvals WHERE status!='Published'")))
-    p4.metric("✅ Published Timetables", len(query_df("SELECT * FROM sections WHERE is_published=1")))
+    if can_view_all_departments():
+        faculty_count = len(query_df("SELECT id FROM faculty"))
+        section_count = len(query_df("SELECT id FROM sections"))
+        subject_count = len(query_df("SELECT id FROM subjects"))
+        classroom_count = len(query_df("SELECT id FROM rooms WHERE room_type='Classroom'"))
+        lab_count = len(query_df("SELECT id FROM rooms WHERE room_type='Lab'"))
+        other_room_count = len(query_df("SELECT id FROM rooms WHERE room_type NOT IN ('Classroom','Lab')"))
+        entry_count = len(query_df("SELECT id FROM timetable"))
 
-    st.divider()
+        dept_count = len(query_df("SELECT id FROM departments"))
+        academic_year_count = len(query_df("SELECT id FROM academic_years"))
+        pending_approval_count = len(query_df("SELECT id FROM timetable_approvals WHERE status!='Published'"))
+        published_count = len(query_df("SELECT id FROM sections WHERE is_published=1"))
+
+        workload = query_df("""
+            SELECT f.name, COUNT(t.id) AS assigned_hours
+            FROM faculty f
+            LEFT JOIN timetable t ON f.id=t.faculty_id
+            GROUP BY f.id
+            ORDER BY assigned_hours DESC
+        """)
+
+        room_util = query_df("""
+            SELECT COALESCE(r.room_name,'No Room') AS room, COUNT(t.id) AS used_periods
+            FROM rooms r
+            LEFT JOIN timetable t ON r.id=t.room_id
+            WHERE r.room_type IN ('Classroom','Smart Classroom','Seminar Hall','Other')
+            GROUP BY r.id
+            ORDER BY used_periods DESC
+        """)
+
+        lab_util = query_df("""
+            SELECT COALESCE(r.room_name,'No Lab') AS lab, COUNT(t.id) AS used_periods
+            FROM rooms r
+            LEFT JOIN timetable t ON r.id=t.room_id
+            WHERE r.room_type='Lab'
+            GROUP BY r.id
+            ORDER BY used_periods DESC
+        """)
+
+    else:
+        faculty_count = len(query_df("SELECT id FROM faculty WHERE department=?", (dept,)))
+        section_count = len(query_df("SELECT id FROM sections WHERE department=?", (dept,)))
+        subject_count = len(query_df("""
+            SELECT s.id
+            FROM subjects s
+            JOIN sections sec ON s.section_id=sec.id
+            WHERE sec.department=?
+        """, (dept,)))
+        classroom_count = len(query_df("SELECT id FROM rooms WHERE department=? AND room_type='Classroom'", (dept,)))
+        lab_count = len(query_df("SELECT id FROM rooms WHERE department=? AND room_type='Lab'", (dept,)))
+        other_room_count = len(query_df(
+            "SELECT id FROM rooms WHERE department=? AND room_type NOT IN ('Classroom','Lab')",
+            (dept,)
+        ))
+        entry_count = len(query_df("""
+            SELECT t.id
+            FROM timetable t
+            JOIN sections sec ON t.section_id=sec.id
+            WHERE sec.department=?
+        """, (dept,)))
+
+        dept_count = 1
+        academic_year_count = len(query_df("SELECT id FROM academic_years"))
+        pending_approval_count = len(query_df("""
+            SELECT ta.id
+            FROM timetable_approvals ta
+            JOIN sections sec ON ta.section_id=sec.id
+            WHERE sec.department=? AND ta.status!='Published'
+        """, (dept,)))
+        published_count = len(query_df("SELECT id FROM sections WHERE department=? AND is_published=1", (dept,)))
+
+        workload = query_df("""
+            SELECT f.name, COUNT(t.id) AS assigned_hours
+            FROM faculty f
+            LEFT JOIN timetable t ON f.id=t.faculty_id
+            WHERE f.department=?
+            GROUP BY f.id
+            ORDER BY assigned_hours DESC
+        """, (dept,))
+
+        room_util = query_df("""
+            SELECT COALESCE(r.room_name,'No Room') AS room, COUNT(t.id) AS used_periods
+            FROM rooms r
+            LEFT JOIN timetable t ON r.id=t.room_id
+            WHERE r.department=? AND r.room_type IN ('Classroom','Smart Classroom','Seminar Hall','Other')
+            GROUP BY r.id
+            ORDER BY used_periods DESC
+        """, (dept,))
+
+        lab_util = query_df("""
+            SELECT COALESCE(r.room_name,'No Lab') AS lab, COUNT(t.id) AS used_periods
+            FROM rooms r
+            LEFT JOIN timetable t ON r.id=t.room_id
+            WHERE r.department=? AND r.room_type='Lab'
+            GROUP BY r.id
+            ORDER BY used_periods DESC
+        """, (dept,))
 
     faculty_clashes, room_clashes, section_clashes = compute_clash_counts()
     total_clashes = faculty_clashes + room_clashes + section_clashes
 
+    p1, p2, p3, p4 = st.columns(4)
+    p1.metric("🏢 Departments", dept_count)
+    p2.metric("🎓 Academic Years", academic_year_count)
+    p3.metric("⏳ Pending Approvals", pending_approval_count)
+    p4.metric("✅ Published Timetables", published_count)
+
+    st.divider()
+
     c1, c2, c3, c4 = st.columns(4)
     c5, c6, c7, c8 = st.columns(4)
 
-    c1.metric("👨‍🏫 Faculty", len(query_df("SELECT id FROM faculty")))
-    c2.metric("🏫 Sections", len(query_df("SELECT id FROM sections")))
-    c3.metric("📚 Subjects", len(query_df("SELECT id FROM subjects")))
-    c4.metric("🚪 Classrooms", len(query_df("SELECT id FROM rooms WHERE room_type='Classroom'")))
+    c1.metric("👨‍🏫 Faculty", faculty_count)
+    c2.metric("🏫 Sections", section_count)
+    c3.metric("📚 Subjects", subject_count)
+    c4.metric("🚪 Classrooms", classroom_count)
 
-    c5.metric("🖥 Labs", len(query_df("SELECT id FROM rooms WHERE room_type='Lab'")))
-    c6.metric("⚙ Other Rooms", len(query_df("SELECT id FROM rooms WHERE room_type NOT IN ('Classroom','Lab')")))
-    c7.metric("📅 Entries", len(query_df("SELECT id FROM timetable")))
+    c5.metric("🖥 Labs", lab_count)
+    c6.metric("⚙ Other Rooms", other_room_count)
+    c7.metric("📅 Entries", entry_count)
     c8.metric("⚠ Clashes", total_clashes)
 
     st.subheader("📊 Timetable Analytics")
-
-    workload, room_util, lab_util = analytics_data()
 
     a1, a2, a3 = st.columns(3)
 
@@ -1328,8 +1426,7 @@ def dashboard_page():
         columns=["PERIOD", "TIMING"]
     )
 
-    st.table(time_grid)
-def faculty_page():
+    st.table(time_grid)def faculty_page():
     header()
     st.subheader("Faculty Management")
 
