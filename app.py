@@ -235,12 +235,20 @@ def execute(query, params=()):
         [
             ("admin", "admin123", "Admin", "System Admin", "CSE"),
             ("principal", "principal123", "Principal", "Principal", "Administration"),
-            ("cse_coord", "cse123", "Coordinator", "CSE Timetable Coordinator", "CSE"),
-            ("it_coord", "it123", "Coordinator", "IT Timetable Coordinator", "IT"),
-            ("ece_coord", "ece123", "Coordinator", "ECE Timetable Coordinator", "ECE"),
-            ("hod", "hod123", "HOD", "HOD User", "CSE"),
-            ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
-            ("student", "student123", "Student", "Student User", "CSE"),
+           ("cse_coord", "cse123", "Coordinator", "CSE Timetable Coordinator", "CSE"),
+           ("it_coord", "it123", "Coordinator", "IT Timetable Coordinator", "IT"),
+           ("aids_coord", "aids123", "Coordinator", "AI&DS Timetable Coordinator", "AI&DS"),
+           ("ece_coord", "ece123", "Coordinator", "ECE Timetable Coordinator", "ECE"),
+           ("eee_coord", "eee123", "Coordinator", "EEE Timetable Coordinator", "EEE"),
+           ("mech_coord", "mech123", "Coordinator", "MECH Timetable Coordinator", "MECH"),
+           ("cse_hod", "hod123", "HOD", "CSE HOD", "CSE"),
+           ("it_hod", "hod123", "HOD", "IT HOD", "IT"),
+           ("aids_hod", "hod123", "HOD", "AI&DS HOD", "AI&DS"),
+           ("ece_hod", "hod123", "HOD", "ECE HOD", "ECE"),
+           ("eee_hod", "hod123", "HOD", "EEE HOD", "EEE"),
+           ("mech_hod", "hod123", "HOD", "MECH HOD", "MECH"),
+           ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
+           ("student", "student123", "Student", "Student User", "CSE"),
         ]
     )
 
