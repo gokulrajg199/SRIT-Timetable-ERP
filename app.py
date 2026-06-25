@@ -1380,7 +1380,13 @@ def sections_page():
 
         year = c1.selectbox("Year", ["1st Year", "2nd Year", "3rd Year", "4th Year"])
         semester = c2.selectbox("Semester", ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"])
-        department = c3.text_input("Department", "CSE")
+
+        if can_view_all_departments():
+            department = c3.text_input("Department", "CSE")
+        else:
+            department = current_department()
+            c3.text_input("Department", department, disabled=True)
+
         section = c4.text_input("Section", "A")
         working_days = c5.selectbox("Working Days", [5, 6], index=1)
 
@@ -1391,15 +1397,23 @@ def sections_page():
                     (year, department, semester, section, working_days)
                 )
                 st.success("Section saved.")
+                st.rerun()
             except sqlite3.IntegrityError:
                 st.error("Section already exists.")
 
+    if can_view_all_departments():
+        section_data = query_df("SELECT * FROM sections ORDER BY year, department, semester, section")
+    else:
+        section_data = query_df(
+            "SELECT * FROM sections WHERE department=? ORDER BY year, semester, section",
+            (current_department(),)
+        )
+
     st.dataframe(
-        query_df("SELECT * FROM sections ORDER BY year, department, semester, section"),
+        section_data,
         use_container_width=True,
         hide_index=True
     )
-
 
 def rooms_page():
     header()
