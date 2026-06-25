@@ -528,6 +528,7 @@ CREATE TABLE IF NOT EXISTS leave_alteration_requests(
     add_col("sections", "year", "TEXT")
     add_col("rooms", "capacity", "INTEGER DEFAULT 60")
     add_col("rooms", "equipment", "TEXT DEFAULT ''")
+    add_col("rooms", "department", "TEXT DEFAULT 'CSE'")
 
     add_col("subjects", "theory_hours", "INTEGER DEFAULT 0")
     add_col("subjects", "lab_hours", "INTEGER DEFAULT 0")
@@ -1518,20 +1519,39 @@ def rooms_page():
     st.subheader("Infrastructure Management")
 
     with st.form("room_form"):
-        c1, c2, c3, c4 = st.columns([1.5, 1, 1, 1.5])
+        c1, c2, c3, c4, c5 = st.columns([1.5, 1, 1, 1.5, 1])
+
         room_name = c1.text_input("Room / Lab Name")
         room_type = c2.selectbox("Type", ["Classroom", "Lab", "Seminar Hall", "Smart Classroom", "Other"])
         capacity = c3.number_input("Capacity", 1, 300, 60)
         equipment = c4.text_input("Equipment", "Projector")
+
+        if can_view_all_departments():
+            department = c5.text_input("Department", "CSE")
+        else:
+            department = current_department()
+            c5.text_input("Department", department, disabled=True)
+
         if st.form_submit_button("Save Infrastructure", use_container_width=True) and room_name:
             try:
-                execute("INSERT INTO rooms(room_name, room_type, capacity, equipment) VALUES(?,?,?,?)", (room_name, room_type, capacity, equipment))
+                execute(
+                    "INSERT INTO rooms(room_name, room_type, capacity, equipment, department) VALUES(?,?,?,?,?)",
+                    (room_name, room_type, capacity, equipment, department)
+                )
                 st.success("Infrastructure saved.")
+                st.rerun()
             except sqlite3.IntegrityError:
                 st.error("Room / Lab already exists.")
 
-    st.dataframe(query_df("SELECT * FROM rooms ORDER BY room_type, room_name"), use_container_width=True, hide_index=True)
+    if can_view_all_departments():
+        room_data = query_df("SELECT * FROM rooms ORDER BY department, room_type, room_name")
+    else:
+        room_data = query_df(
+            "SELECT * FROM rooms WHERE department=? ORDER BY room_type, room_name",
+            (current_department(),)
+        )
 
+    st.dataframe(room_data, use_container_width=True, hide_index=True)
 
 def subjects_page():
     header()
