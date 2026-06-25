@@ -1338,7 +1338,13 @@ def faculty_page():
 
         name = c1.text_input("Faculty Name")
         designation = c2.text_input("Designation", "AP/CSE")
-        department = c3.text_input("Department", "CSE")
+
+        if can_view_all_departments():
+            department = c3.text_input("Department", "CSE")
+        else:
+            department = current_department()
+            c3.text_input("Department", department, disabled=True)
+
         max_hours = c4.number_input("Max Hours / Week", 1, 40, 24)
 
         if st.form_submit_button("Save Faculty", use_container_width=True) and name:
@@ -1352,10 +1358,24 @@ def faculty_page():
             except sqlite3.IntegrityError:
                 st.error("Faculty already exists.")
 
+    if can_view_all_departments():
+        faculty_data = query_df("SELECT * FROM faculty ORDER BY department, name")
+    else:
+        faculty_data = query_df(
+            "SELECT * FROM faculty WHERE department=? ORDER BY name",
+            (current_department(),)
+        )
+
     st.dataframe(
-        query_df("SELECT * FROM faculty ORDER BY name"),
+        faculty_data,
         use_container_width=True,
         hide_index=True
+    )
+st.dataframe(
+    faculty_data,
+    use_container_width=True,
+    hide_index=True
+)
     )
 
 def sections_page():
