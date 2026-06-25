@@ -1427,7 +1427,7 @@ def dashboard_page():
     )
 
     st.table(time_grid)
-    def faculty_page():
+def faculty_page():
     header()
     st.subheader("Faculty Management")
 
