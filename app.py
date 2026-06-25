@@ -584,19 +584,54 @@ def section_label_df():
 
 
 def faculty_df():
-    return query_df("SELECT id, name FROM faculty ORDER BY name")
+    if can_view_all_departments():
+        return query_df("SELECT id, name FROM faculty ORDER BY department, name")
+    else:
+        return query_df(
+            "SELECT id, name FROM faculty WHERE department=? ORDER BY name",
+            (current_department(),)
+        )
 
 
 def rooms_df(room_type=None):
-    if room_type:
-        return query_df("SELECT id, room_name, room_type FROM rooms WHERE room_type=? ORDER BY room_name", (room_type,))
-    return query_df("SELECT id, room_name, room_type FROM rooms ORDER BY room_name")
+    if can_view_all_departments():
+        if room_type:
+            return query_df(
+                "SELECT id, room_name, room_type FROM rooms WHERE room_type=? ORDER BY department, room_name",
+                (room_type,)
+            )
+        return query_df("SELECT id, room_name, room_type FROM rooms ORDER BY department, room_name")
+    else:
+        if room_type:
+            return query_df(
+                "SELECT id, room_name, room_type FROM rooms WHERE department=? AND room_type=? ORDER BY room_name",
+                (current_department(), room_type)
+            )
+        return query_df(
+            "SELECT id, room_name, room_type FROM rooms WHERE department=? ORDER BY room_name",
+            (current_department(),)
+        )
 
 
 def subject_label_df(section_id=None):
     if section_id:
-        return query_df("SELECT id, subject_code || ' - ' || subject_name AS label FROM subjects WHERE section_id=? ORDER BY subject_name", (section_id,))
-    return query_df("SELECT id, subject_code || ' - ' || subject_name AS label FROM subjects ORDER BY subject_name")
+        return query_df(
+            "SELECT id, subject_code || ' - ' || subject_name AS label FROM subjects WHERE section_id=? ORDER BY subject_name",
+            (section_id,)
+        )
+
+    if can_view_all_departments():
+        return query_df(
+            "SELECT id, subject_code || ' - ' || subject_name AS label FROM subjects ORDER BY subject_name"
+        )
+    else:
+        return query_df("""
+            SELECT s.id, s.subject_code || ' - ' || s.subject_name AS label
+            FROM subjects s
+            JOIN sections sec ON s.section_id=sec.id
+            WHERE sec.department=?
+            ORDER BY s.subject_name
+        """, (current_department(),))
 
 
 from pathlib import Path
