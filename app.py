@@ -235,6 +235,9 @@ def execute(query, params=()):
         [
             ("admin", "admin123", "Admin", "System Admin", "CSE"),
             ("principal", "principal123", "Principal", "Principal", "Administration"),
+            ("cse_coord", "cse123", "Coordinator", "CSE Timetable Coordinator", "CSE"),
+            ("it_coord", "it123", "Coordinator", "IT Timetable Coordinator", "IT"),
+            ("ece_coord", "ece123", "Coordinator", "ECE Timetable Coordinator", "ECE"),
             ("hod", "hod123", "HOD", "HOD User", "CSE"),
             ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
             ("student", "student123", "Student", "Student User", "CSE"),
@@ -1089,8 +1092,8 @@ def analytics_data():
 
 
 def sidebar_menu():
-
     role = st.session_state.get("role", "Admin")
+    dept = st.session_state.get("department", "CSE")
 
     admin_menu = [
         "Dashboard",
@@ -1123,20 +1126,11 @@ def sidebar_menu():
         "Settings"
     ]
 
-    principal_menu = [
+    coordinator_menu = [
         "Dashboard",
-        "Approval Workflow",
-        "View / Export",
-        "Faculty Workload",
-        "Leave Management",
-        "Leave Alteration",
-        "Exam Timetable",
-        "Audit Log"
-    ]
-
-    hod_menu = [
-        "Dashboard",
+        "Faculty",
         "Sections",
+        "Infrastructure",
         "Subjects & Constraints",
         "Generate Timetable",
         "Auto Clash Resolver",
@@ -1145,10 +1139,29 @@ def sidebar_menu():
         "Faculty Workload",
         "Faculty Unavailable",
         "Faculty Preferences",
+        "Approval Workflow"
+    ]
+
+    hod_menu = [
+        "Dashboard",
+        "View / Export",
+        "Clash Intelligence",
+        "Faculty Workload",
         "Approval Workflow",
-        "Faculty Swap Requests",
         "Leave Management",
         "Leave Alteration",
+        "Exam Timetable",
+        "Audit Log"
+    ]
+
+    principal_menu = [
+        "Dashboard",
+        "Approval Workflow",
+        "View / Export",
+        "Faculty Workload",
+        "Leave Management",
+        "Leave Alteration",
+        "Exam Timetable",
         "Audit Log"
     ]
 
@@ -1169,10 +1182,12 @@ def sidebar_menu():
 
     if role == "Admin":
         menu = admin_menu
-    elif role == "Principal":
-        menu = principal_menu
+    elif role == "Coordinator":
+        menu = coordinator_menu
     elif role == "HOD":
         menu = hod_menu
+    elif role == "Principal":
+        menu = principal_menu
     elif role == "Faculty":
         menu = faculty_menu
     else:
@@ -1180,7 +1195,8 @@ def sidebar_menu():
 
     with st.sidebar:
         st.title("🏫 SRIT ERP")
-        st.caption(f"Logged in as: {role}")
+        st.caption(f"Role: {role}")
+        st.caption(f"Department: {dept}")
 
         page = st.radio("Menu", menu)
 
@@ -1189,13 +1205,14 @@ def sidebar_menu():
                 "Logout",
                 f"{st.session_state.get('username','user')} logged out"
             )
-
             st.session_state.logged_in = False
             st.session_state.role = ""
             st.session_state.username = ""
+            st.session_state.department = ""
             st.rerun()
 
     return page
+
 def dashboard_page():
     header()
 
@@ -3016,8 +3033,6 @@ def main_app():
         academic_year_page()
     elif page == "Faculty":
         faculty_page()
-    elif page == "Leave Alteration":
-        leave_alteration_page()    
     elif page == "Sections":
         sections_page()
     elif page == "Infrastructure":
