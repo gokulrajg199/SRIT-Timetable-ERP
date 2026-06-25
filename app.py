@@ -233,22 +233,23 @@ def execute(query, params=()):
     cur.executemany(
         "INSERT OR IGNORE INTO users(username, password, role, name, department) VALUES(?,?,?,?,?)",
         [
-            ("admin", "admin123", "Admin", "System Admin", "CSE"),
+            ("admin", "admin123", "Admin", "System Admin", "Administration"),
             ("principal", "principal123", "Principal", "Principal", "Administration"),
-           ("cse_coord", "cse123", "Coordinator", "CSE Timetable Coordinator", "CSE"),
-           ("it_coord", "it123", "Coordinator", "IT Timetable Coordinator", "IT"),
-           ("aids_coord", "aids123", "Coordinator", "AI&DS Timetable Coordinator", "AI&DS"),
-           ("ece_coord", "ece123", "Coordinator", "ECE Timetable Coordinator", "ECE"),
-           ("eee_coord", "eee123", "Coordinator", "EEE Timetable Coordinator", "EEE"),
-           ("mech_coord", "mech123", "Coordinator", "MECH Timetable Coordinator", "MECH"),
-           ("cse_hod", "hod123", "HOD", "CSE HOD", "CSE"),
-           ("it_hod", "hod123", "HOD", "IT HOD", "IT"),
-           ("aids_hod", "hod123", "HOD", "AI&DS HOD", "AI&DS"),
-           ("ece_hod", "hod123", "HOD", "ECE HOD", "ECE"),
-           ("eee_hod", "hod123", "HOD", "EEE HOD", "EEE"),
-           ("mech_hod", "hod123", "HOD", "MECH HOD", "MECH"),
-           ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
-           ("student", "student123", "Student", "Student User", "CSE"),
+            ("cse_coord", "cse123", "Coordinator", "CSE Timetable Coordinator", "CSE"),
+            ("it_coord", "it123", "Coordinator", "IT Timetable Coordinator", "IT"),
+            ("aids_coord", "aids123", "Coordinator", "AI&DS Timetable Coordinator", "AI&DS"),
+            ("ece_coord", "ece123", "Coordinator", "ECE Timetable Coordinator", "ECE"),
+            ("eee_coord", "eee123", "Coordinator", "EEE Timetable Coordinator", "EEE"),
+            ("mech_coord", "mech123", "Coordinator", "MECH Timetable Coordinator", "MECH"),
+            ("cse_hod", "hod123", "HOD", "CSE HOD", "CSE"),
+            ("it_hod", "hod123", "HOD", "IT HOD", "IT"),
+            ("aids_hod", "hod123", "HOD", "AI&DS HOD", "AI&DS"),
+            ("ece_hod", "hod123", "HOD", "ECE HOD", "ECE"),
+            ("eee_hod", "hod123", "HOD", "EEE HOD", "EEE"),
+            ("mech_hod", "hod123", "HOD", "MECH HOD", "MECH"),
+            ("hod", "hod123", "HOD", "HOD User", "CSE"),
+            ("faculty", "faculty123", "Faculty", "Faculty User", "CSE"),
+            ("student", "student123", "Student", "Student User", "CSE"),
         ]
     )
 
@@ -574,24 +575,30 @@ def clean_int(value):
 
 
 def section_label_df():
+    if can_view_all_departments():
+        return query_df("""
+            SELECT id,
+                   COALESCE(year,'') || ' | ' || department || ' | Sem ' || semester || ' | Sec ' || section AS label,
+                   working_days
+            FROM sections
+            ORDER BY year, department, semester, section
+        """)
     return query_df("""
         SELECT id,
                COALESCE(year,'') || ' | ' || department || ' | Sem ' || semester || ' | Sec ' || section AS label,
                working_days
         FROM sections
-        ORDER BY year, department, semester, section
-    """)
-
+        WHERE department=?
+        ORDER BY year, semester, section
+    """, (current_department(),))
 
 def faculty_df():
     if can_view_all_departments():
         return query_df("SELECT id, name FROM faculty ORDER BY department, name")
-    else:
-        return query_df(
-            "SELECT id, name FROM faculty WHERE department=? ORDER BY name",
-            (current_department(),)
-        )
-
+    return query_df(
+        "SELECT id, name FROM faculty WHERE department=? ORDER BY name",
+        (current_department(),)
+    )
 
 def rooms_df(room_type=None):
     if can_view_all_departments():
@@ -601,17 +608,16 @@ def rooms_df(room_type=None):
                 (room_type,)
             )
         return query_df("SELECT id, room_name, room_type FROM rooms ORDER BY department, room_name")
-    else:
-        if room_type:
-            return query_df(
-                "SELECT id, room_name, room_type FROM rooms WHERE department=? AND room_type=? ORDER BY room_name",
-                (current_department(), room_type)
-            )
-        return query_df(
-            "SELECT id, room_name, room_type FROM rooms WHERE department=? ORDER BY room_name",
-            (current_department(),)
-        )
 
+    if room_type:
+        return query_df(
+            "SELECT id, room_name, room_type FROM rooms WHERE department=? AND room_type=? ORDER BY room_name",
+            (current_department(), room_type)
+        )
+    return query_df(
+        "SELECT id, room_name, room_type FROM rooms WHERE department=? ORDER BY room_name",
+        (current_department(),)
+    )
 
 def subject_label_df(section_id=None):
     if section_id:
@@ -624,17 +630,14 @@ def subject_label_df(section_id=None):
         return query_df(
             "SELECT id, subject_code || ' - ' || subject_name AS label FROM subjects ORDER BY subject_name"
         )
-    else:
-        return query_df("""
-            SELECT s.id, s.subject_code || ' - ' || s.subject_name AS label
-            FROM subjects s
-            JOIN sections sec ON s.section_id=sec.id
-            WHERE sec.department=?
-            ORDER BY s.subject_name
-        """, (current_department(),))
 
-
-from pathlib import Path
+    return query_df("""
+        SELECT s.id, s.subject_code || ' - ' || s.subject_name AS label
+        FROM subjects s
+        JOIN sections sec ON s.section_id=sec.id
+        WHERE sec.department=?
+        ORDER BY s.subject_name
+    """, (current_department(),))
 
 def header():
     col1, col2, col3 = st.columns([1, 10, 1])
@@ -1273,6 +1276,224 @@ def sidebar_menu():
 
     return page
 
+def dashboard_page():
+    header()
+
+    role = current_role()
+    dept = current_department()
+
+    title = "Principal Executive Dashboard" if role in ["Principal", "Admin"] else f"{dept} Department Dashboard"
+
+    st.markdown(f"""
+    <div style="
+        background:#ffffff;
+        padding:20px;
+        border-radius:16px;
+        border-left:8px solid #1b5e20;
+        border-right:3px solid #d4af37;
+        margin-bottom:22px;
+        box-shadow:0px 4px 14px rgba(0,0,0,0.12);
+        text-align:center;
+    ">
+        <h2 style="color:#1b5e20; margin:0;">
+            🏫 SRIT Academic Resource Management System (SARMS)
+        </h2>
+        <h4 style="color:#333333; margin-top:8px;">
+            {title}
+        </h4>
+        <p style="font-size:17px; color:#555;">
+            Department Timetable Status • Approval Monitoring • Faculty Workload • Resource Utilization
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if role in ["Principal", "Admin"]:
+        total_departments = len(query_df("SELECT id FROM departments"))
+        total_faculty = len(query_df("SELECT id FROM faculty"))
+        total_sections = len(query_df("SELECT id FROM sections"))
+        total_subjects = len(query_df("SELECT id FROM subjects"))
+        total_classrooms = len(query_df("SELECT id FROM rooms WHERE room_type='Classroom'"))
+        total_labs = len(query_df("SELECT id FROM rooms WHERE room_type='Lab'"))
+        total_entries = len(query_df("SELECT id FROM timetable"))
+        pending_approvals = len(query_df("""
+            SELECT id FROM timetable_approvals
+            WHERE status NOT IN ('Published','Approved by Principal')
+        """))
+        published_timetables = len(query_df("SELECT id FROM sections WHERE is_published=1"))
+        leave_pending = len(query_df("SELECT id FROM faculty_leave WHERE status='Pending'"))
+        exam_count = len(query_df("SELECT id FROM exam_timetable"))
+        active_years = len(query_df("SELECT id FROM academic_years WHERE is_active=1"))
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🏢 Departments", total_departments)
+        c2.metric("👨‍🏫 Faculty", total_faculty)
+        c3.metric("🏫 Sections", total_sections)
+        c4.metric("📚 Subjects", total_subjects)
+
+        c5, c6, c7, c8 = st.columns(4)
+        c5.metric("🚪 Classrooms", total_classrooms)
+        c6.metric("🖥 Labs", total_labs)
+        c7.metric("⏳ Pending Approvals", pending_approvals)
+        c8.metric("✅ Published", published_timetables)
+
+        n1, n2, n3, n4 = st.columns(4)
+        n1.metric("📅 Timetable Entries", total_entries)
+        n2.metric("📝 Leave Pending", leave_pending)
+        n3.metric("🧾 Exam Schedules", exam_count)
+        n4.metric("📌 Active Academic Year", active_years)
+
+        st.divider()
+        st.subheader("🏢 Department Timetable Status")
+
+        dept_status = query_df("""
+            SELECT
+                d.department_name AS Department,
+                COALESCE(COUNT(sec.id), 0) AS Sections,
+                COALESCE(SUM(CASE WHEN sec.is_published=1 THEN 1 ELSE 0 END), 0) AS Published,
+                COALESCE(SUM(CASE WHEN ta.status IS NULL THEN 1 ELSE 0 END), 0) AS Draft,
+                COALESCE(SUM(CASE WHEN ta.status='Approved by HOD' THEN 1 ELSE 0 END), 0) AS HOD_Approved,
+                COALESCE(SUM(CASE WHEN ta.status='Rejected' THEN 1 ELSE 0 END), 0) AS Returned
+            FROM departments d
+            LEFT JOIN sections sec ON d.department_name = sec.department
+            LEFT JOIN timetable_approvals ta ON sec.id = ta.section_id
+            GROUP BY d.department_name
+            ORDER BY d.department_name
+        """)
+        st.dataframe(dept_status, use_container_width=True, hide_index=True)
+
+        st.divider()
+        st.subheader("⏳ Pending Timetable Approvals")
+        pending_df = query_df("""
+            SELECT
+                sec.department,
+                sec.year,
+                sec.semester,
+                sec.section,
+                COALESCE(ta.status, 'Draft') AS status,
+                COALESCE(ta.hod_comment, '') AS hod_comment,
+                COALESCE(ta.principal_comment, '') AS principal_comment,
+                COALESCE(ta.updated_at, '') AS updated_at
+            FROM sections sec
+            LEFT JOIN timetable_approvals ta ON sec.id = ta.section_id
+            WHERE COALESCE(ta.status, 'Draft') NOT IN ('Published','Approved by Principal')
+            ORDER BY sec.department, sec.year, sec.semester, sec.section
+        """)
+        if not pending_df.empty:
+            st.dataframe(pending_df, use_container_width=True, hide_index=True)
+        else:
+            st.success("No pending timetable approvals.")
+
+        st.divider()
+        st.subheader("🔔 Executive Notifications")
+        faculty_clashes, room_clashes, section_clashes = compute_clash_counts()
+        total_clashes = faculty_clashes + room_clashes + section_clashes
+        noti1, noti2, noti3 = st.columns(3)
+        with noti1:
+            st.warning(f"{pending_approvals} timetable approval(s) pending.") if pending_approvals else st.success("All timetables cleared.")
+        with noti2:
+            st.warning(f"{leave_pending} leave request(s) pending.") if leave_pending else st.success("No pending leave request.")
+        with noti3:
+            st.error(f"{total_clashes} clash(es) detected.") if total_clashes else st.success("No timetable clashes detected.")
+
+        st.divider()
+        st.subheader("📊 Institution Analytics")
+        workload = query_df("""
+            SELECT f.department, f.name, COUNT(t.id) AS assigned_hours
+            FROM faculty f
+            LEFT JOIN timetable t ON f.id=t.faculty_id
+            GROUP BY f.id
+            ORDER BY f.department, assigned_hours DESC
+        """)
+        room_util = query_df("""
+            SELECT COALESCE(r.department,'') AS department,
+                   COALESCE(r.room_name,'No Room') AS room,
+                   COUNT(t.id) AS used_periods
+            FROM rooms r
+            LEFT JOIN timetable t ON r.id=t.room_id
+            GROUP BY r.id
+            ORDER BY department, used_periods DESC
+        """)
+        a1, a2 = st.columns(2)
+        with a1:
+            st.markdown("#### Faculty Workload")
+            if not workload.empty:
+                chart_df = workload.copy()
+                chart_df["faculty"] = chart_df["department"].astype(str) + " - " + chart_df["name"].astype(str)
+                st.bar_chart(chart_df.set_index("faculty")["assigned_hours"])
+            else:
+                st.info("No faculty workload data yet.")
+        with a2:
+            st.markdown("#### Room / Lab Utilization")
+            if not room_util.empty:
+                chart_df = room_util.copy()
+                chart_df["room_label"] = chart_df["department"].astype(str) + " - " + chart_df["room"].astype(str)
+                st.bar_chart(chart_df.set_index("room_label")["used_periods"])
+            else:
+                st.info("No room utilization data yet.")
+
+        st.divider()
+        st.subheader("🕘 Recent Activities")
+        recent = query_df("""
+            SELECT action, details, username, created_at
+            FROM audit_log
+            ORDER BY id DESC
+            LIMIT 10
+        """)
+        if not recent.empty:
+            st.dataframe(recent, use_container_width=True, hide_index=True)
+        else:
+            st.info("No recent activity recorded.")
+
+    else:
+        st.subheader(f"🏢 {dept} Department Dashboard")
+        faculty_count = len(query_df("SELECT id FROM faculty WHERE department=?", (dept,)))
+        section_count = len(query_df("SELECT id FROM sections WHERE department=?", (dept,)))
+        classroom_count = len(query_df("SELECT id FROM rooms WHERE department=? AND room_type='Classroom'", (dept,)))
+        lab_count = len(query_df("SELECT id FROM rooms WHERE department=? AND room_type='Lab'", (dept,)))
+        subject_count = len(query_df("""
+            SELECT s.id
+            FROM subjects s
+            JOIN sections sec ON s.section_id=sec.id
+            WHERE sec.department=?
+        """, (dept,)))
+        entry_count = len(query_df("""
+            SELECT t.id
+            FROM timetable t
+            JOIN sections sec ON t.section_id=sec.id
+            WHERE sec.department=?
+        """, (dept,)))
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("👨‍🏫 Faculty", faculty_count)
+        c2.metric("🏫 Sections", section_count)
+        c3.metric("📚 Subjects", subject_count)
+        c4.metric("📅 Entries", entry_count)
+
+        c5, c6, c7, c8 = st.columns(4)
+        c5.metric("🚪 Classrooms", classroom_count)
+        c6.metric("🖥 Labs", lab_count)
+        c7.metric("🏢 Department", dept)
+        c8.metric("👤 Role", role)
+
+        st.divider()
+        st.subheader("📊 Department Faculty Workload")
+        workload = query_df("""
+            SELECT f.name, COUNT(t.id) AS assigned_hours
+            FROM faculty f
+            LEFT JOIN timetable t ON f.id=t.faculty_id
+            WHERE f.department=?
+            GROUP BY f.id
+            ORDER BY assigned_hours DESC
+        """, (dept,))
+        if not workload.empty:
+            st.bar_chart(workload.set_index("name")["assigned_hours"])
+        else:
+            st.info("No timetable generated yet for this department.")
+
+    st.subheader("⏱ SRIT Academic Time Grid")
+    time_grid = pd.DataFrame(PERIODS, columns=["PERIOD", "TIMING"])
+    st.table(time_grid)
+
 def faculty_page():
     header()
     st.subheader("Faculty Management")
@@ -1310,11 +1531,8 @@ def faculty_page():
             (current_department(),)
         )
 
-    st.dataframe(
-        faculty_data,
-        use_container_width=True,
-        hide_index=True
-    )
+    st.dataframe(faculty_data, use_container_width=True, hide_index=True)
+
 def sections_page():
     header()
     st.subheader("Class / Section Management")
@@ -1353,11 +1571,7 @@ def sections_page():
             (current_department(),)
         )
 
-    st.dataframe(
-        section_data,
-        use_container_width=True,
-        hide_index=True
-    )
+    st.dataframe(section_data, use_container_width=True, hide_index=True)
 
 def rooms_page():
     header()
@@ -1405,8 +1619,26 @@ def subjects_page():
     fdf = faculty_df()
     sdf = section_label_df()
     rdf = rooms_df()
-    lab_rdf = query_df("SELECT id, room_name FROM rooms WHERE room_type='Lab' ORDER BY room_name")
-    class_rdf = query_df("SELECT id, room_name FROM rooms WHERE room_type IN ('Classroom','Smart Classroom') ORDER BY room_name")
+
+    if can_view_all_departments():
+        lab_rdf = query_df("SELECT id, room_name FROM rooms WHERE room_type='Lab' ORDER BY department, room_name")
+        class_rdf = query_df("""
+            SELECT id, room_name
+            FROM rooms
+            WHERE room_type IN ('Classroom','Smart Classroom')
+            ORDER BY department, room_name
+        """)
+    else:
+        lab_rdf = query_df(
+            "SELECT id, room_name FROM rooms WHERE room_type='Lab' AND department=? ORDER BY room_name",
+            (current_department(),)
+        )
+        class_rdf = query_df("""
+            SELECT id, room_name
+            FROM rooms
+            WHERE room_type IN ('Classroom','Smart Classroom') AND department=?
+            ORDER BY room_name
+        """, (current_department(),))
 
     if fdf.empty or sdf.empty:
         st.warning("Add faculty and sections first.")
@@ -1439,57 +1671,30 @@ def subjects_page():
         if subject_type == "Theory":
             theory_hours = st.number_input("Theory Hours / Week", 1, 10, 3)
             weekly_hours = theory_hours
-
             same_day_theory = st.checkbox("Schedule All Theory Hours On Same Day?")
             theory_cont = st.checkbox("Theory Continuous Period Required?")
-
             if theory_cont:
-                theory_cont_hours = st.number_input(
-                    "How many continuous theory periods?",
-                    2,
-                    8,
-                    2
-                )
+                theory_cont_hours = st.number_input("How many continuous theory periods?", 2, 8, 2)
 
         elif subject_type in ["Lab", "Practical"]:
             lab_hours = st.number_input("Lab Hours / Week", 1, 10, 4)
             weekly_hours = lab_hours
-
             st.info("Lab continuous period is mandatory.")
             lab_cont = True
-            lab_cont_hours = st.number_input(
-                "How many continuous lab periods?",
-                1,
-                8,
-                lab_hours
-            )
+            lab_cont_hours = st.number_input("How many continuous lab periods?", 1, 8, lab_hours)
 
         elif subject_type == "Theory + Lab":
             c1, c2 = st.columns(2)
-
             theory_hours = c1.number_input("Theory Hours / Week", 1, 10, 2)
             lab_hours = c2.number_input("Lab Hours / Week", 1, 10, 2)
             weekly_hours = theory_hours + lab_hours
-
             same_day_theory = st.checkbox("Schedule All Theory Hours On Same Day?")
             theory_cont = st.checkbox("Theory Continuous Period Required?")
-
             if theory_cont:
-                theory_cont_hours = st.number_input(
-                    "How many continuous theory periods?",
-                    2,
-                    8,
-                    2
-                )
-
+                theory_cont_hours = st.number_input("How many continuous theory periods?", 2, 8, 2)
             st.info("Lab continuous period is mandatory for Theory + Lab.")
             lab_cont = True
-            lab_cont_hours = st.number_input(
-                "How many continuous lab periods?",
-                1,
-                8,
-                lab_hours
-            )
+            lab_cont_hours = st.number_input("How many continuous lab periods?", 1, 8, lab_hours)
 
         st.markdown("### Faculty and Room / Lab Mapping")
 
@@ -1513,7 +1718,6 @@ def subjects_page():
         if subject_type in ["Lab", "Theory + Lab", "Practical"]:
             lab_options = ["None"] + (lab_rdf["room_name"].tolist() if not lab_rdf.empty else rdf["room_name"].tolist())
             lab_room_name = st.selectbox("Which Lab?", lab_options)
-
             if lab_room_name != "None":
                 all_rooms = rooms_df()
                 lab_room_id = int(all_rooms[all_rooms["room_name"] == lab_room_name]["id"].iloc[0])
@@ -1539,26 +1743,52 @@ def subjects_page():
                 int(lab_cont_hours),
                 faculty_id, lab_faculty_id, section_id, room_id, lab_room_id
             ))
-
             st.success("Subject and constraints saved.")
+            st.rerun()
 
-    st.dataframe(query_df("""
-        SELECT s.id, s.subject_code, s.subject_name, s.subject_type,
-               s.weekly_hours, s.theory_hours, s.lab_hours,
-               s.theory_continuous_required, s.theory_continuous_hours,
-               s.same_day_theory,
-               s.lab_continuous_required, s.lab_continuous_hours,
-               f.name AS theory_faculty, lf.name AS lab_faculty,
-               sec.year, sec.department, sec.semester, sec.section,
-               r.room_name AS classroom, lr.room_name AS lab
-        FROM subjects s
-        JOIN faculty f ON s.faculty_id=f.id
-        LEFT JOIN faculty lf ON s.lab_faculty_id=lf.id
-        JOIN sections sec ON s.section_id=sec.id
-        LEFT JOIN rooms r ON s.room_id=r.id
-        LEFT JOIN rooms lr ON s.lab_room_id=lr.id
-        ORDER BY sec.year, sec.department, sec.semester, sec.section, s.subject_name
-    """), use_container_width=True, hide_index=True)
+    if can_view_all_departments():
+        df = query_df("""
+            SELECT s.id, s.subject_code, s.subject_name, s.subject_type,
+                   s.weekly_hours, s.theory_hours, s.lab_hours,
+                   s.theory_continuous_required, s.theory_continuous_hours,
+                   s.same_day_theory,
+                   s.lab_continuous_required, s.lab_continuous_hours,
+                   f.name AS theory_faculty,
+                   lf.name AS lab_faculty,
+                   sec.year, sec.department, sec.semester, sec.section,
+                   r.room_name AS classroom,
+                   lr.room_name AS lab
+            FROM subjects s
+            JOIN faculty f ON s.faculty_id=f.id
+            LEFT JOIN faculty lf ON s.lab_faculty_id=lf.id
+            JOIN sections sec ON s.section_id=sec.id
+            LEFT JOIN rooms r ON s.room_id=r.id
+            LEFT JOIN rooms lr ON s.lab_room_id=lr.id
+            ORDER BY sec.department, sec.year, sec.semester, sec.section, s.subject_name
+        """)
+    else:
+        df = query_df("""
+            SELECT s.id, s.subject_code, s.subject_name, s.subject_type,
+                   s.weekly_hours, s.theory_hours, s.lab_hours,
+                   s.theory_continuous_required, s.theory_continuous_hours,
+                   s.same_day_theory,
+                   s.lab_continuous_required, s.lab_continuous_hours,
+                   f.name AS theory_faculty,
+                   lf.name AS lab_faculty,
+                   sec.year, sec.department, sec.semester, sec.section,
+                   r.room_name AS classroom,
+                   lr.room_name AS lab
+            FROM subjects s
+            JOIN faculty f ON s.faculty_id=f.id
+            LEFT JOIN faculty lf ON s.lab_faculty_id=lf.id
+            JOIN sections sec ON s.section_id=sec.id
+            LEFT JOIN rooms r ON s.room_id=r.id
+            LEFT JOIN rooms lr ON s.lab_room_id=lr.id
+            WHERE sec.department=?
+            ORDER BY sec.year, sec.semester, sec.section, s.subject_name
+        """, (current_department(),))
+
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
 def manual_entry_page():
     header()
