@@ -1273,7 +1273,6 @@ def sidebar_menu():
 
     return page
 
-dashboard_page()
 def faculty_page():
     header()
     st.subheader("Faculty Management")
