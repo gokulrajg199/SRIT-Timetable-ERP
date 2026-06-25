@@ -1397,12 +1397,24 @@ def dashboard_page():
         faculty_clashes, room_clashes, section_clashes = compute_clash_counts()
         total_clashes = faculty_clashes + room_clashes + section_clashes
         noti1, noti2, noti3 = st.columns(3)
+
         with noti1:
-            st.warning(f"{pending_approvals} timetable approval(s) pending.") if pending_approvals else st.success("All timetables cleared.")
+            if pending_approvals > 0:
+                st.warning(f"{pending_approvals} timetable approval(s) pending.")
+            else:
+                st.success("All timetables cleared.")
+
         with noti2:
-            st.warning(f"{leave_pending} leave request(s) pending.") if leave_pending else st.success("No pending leave request.")
+            if leave_pending > 0:
+                st.warning(f"{leave_pending} leave request(s) pending.")
+            else:
+                st.success("No pending leave request.")
+
         with noti3:
-            st.error(f"{total_clashes} clash(es) detected.") if total_clashes else st.success("No timetable clashes detected.")
+            if total_clashes > 0:
+                st.error(f"{total_clashes} clash(es) detected.")
+            else:
+                st.success("No timetable clashes detected.")
 
         st.divider()
         st.subheader("📊 Institution Analytics")
