@@ -1426,7 +1426,8 @@ def dashboard_page():
         columns=["PERIOD", "TIMING"]
     )
 
-    st.table(time_grid)def faculty_page():
+    st.table(time_grid)
+    def faculty_page():
     header()
     st.subheader("Faculty Management")
 
