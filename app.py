@@ -1371,12 +1371,6 @@ def faculty_page():
         use_container_width=True,
         hide_index=True
     )
-st.dataframe(
-    faculty_data,
-    use_container_width=True,
-    hide_index=True
-)
-   )
 def sections_page():
     header()
     st.subheader("Class / Section Management")
