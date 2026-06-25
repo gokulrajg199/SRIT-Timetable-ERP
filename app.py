@@ -275,6 +275,22 @@ def query_df(query, params=()):
     return df
 
 
+def current_department():
+    return st.session_state.get("department", "")
+
+def current_role():
+    return st.session_state.get("role", "")
+
+def can_view_all_departments():
+    return current_role() in ["Admin", "Principal"]
+
+def dept_filter_sql(alias=""):
+    if can_view_all_departments():
+        return "", ()
+    prefix = f"{alias}." if alias else ""
+    return f" AND {prefix}department=?", (current_department(),)
+
+
 def log_action(action, details=""):
     try:
         username = st.session_state.get("username", "system")
