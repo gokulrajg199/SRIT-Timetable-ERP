@@ -725,20 +725,21 @@ def login_page():
                 (username, password)
             )
 
-            if not user_df.empty:
-                row = user_df.iloc[0]
+           if not user_df.empty:
 
-                st.session_state.logged_in = True
-                st.session_state.username = row["username"]
-                st.session_state.role = row["role"]
-                st.session_state.full_name = row["name"]
-                st.session_state.department = row["department"]
+    row = user_df.iloc[0]
 
-                st.success(f"Welcome {row['name']} ({row['role']})")
-                st.rerun()
-                      else:
-                st.error("Invalid username or password")
+    st.session_state.logged_in = True
+    st.session_state.username = row["username"]
+    st.session_state.role = row["role"]
+    st.session_state.full_name = row["name"]
+    st.session_state.department = row["department"]
 
+    st.success(f"Welcome {row['name']} ({row['role']})")
+    st.rerun()
+
+else:
+    st.error("Invalid username or password")
         st.markdown("</div>", unsafe_allow_html=True)
 
 def allocate_block(grid, day, start_period, length, session, used_faculty, used_room):
