@@ -1927,7 +1927,20 @@ def generate_page():
 
     clear_old = st.checkbox("Clear old timetable for this section before generating", value=True)
 
-    if st.button("Generate Clash-Free Timetable", type="primary", use_container_width=True):
+   col1, col2 = st.columns(2)
+
+with col1:
+    generate_btn = st.button(
+        "Generate Clash-Free Timetable",
+        type="primary",
+        use_container_width=True
+    )
+
+with col2:
+    regenerate_btn = st.button(
+        "Regenerate Optimized Timetable",
+        use_container_width=True
+    )
         ok, msg = generate_for_section(section_id, working_days, clear_old=clear_old)
         if ok:
             st.success(msg)
