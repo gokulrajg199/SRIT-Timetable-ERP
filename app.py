@@ -3038,47 +3038,40 @@ def leave_alteration_page():
             for _, row in affected.iterrows():
                 period = int(row["period"])
 
-            available = query_df("""
-    SELECT
-        f.id,
-        f.name,
-        COUNT(t.id) AS workload
-    FROM faculty f
-    LEFT JOIN timetable t
-        ON f.id=t.faculty_id
-    WHERE f.id != ?
-    AND f.id NOT IN (
-        SELECT faculty_id
-        FROM timetable
+          available = query_df("""
+    SELECT id, name
+    FROM faculty
+    WHERE id != ?
+    AND id NOT IN (
+        SELECT faculty_id FROM timetable
         WHERE day=? AND period=?
     )
-    AND f.id NOT IN (
-        SELECT faculty_id
-        FROM faculty_unavailable
+    AND id NOT IN (
+        SELECT faculty_id FROM faculty_unavailable
         WHERE day=? AND period=?
     )
-    GROUP BY f.id, f.name
-    ORDER BY workload ASC, f.name
+    ORDER BY name
 """, (
     data["faculty_id"],
     data["leave_day"], period,
     data["leave_day"], period
 ))
 
-                if available.empty:
-                    st.warning(f"No free substitute faculty available for Period {period}.")
-                    substitute_map[int(row["id"])] = None
-                else:
-                    recommended = available.iloc[0]["name"]
+if available.empty:
+    st.warning(f"No free substitute faculty available for Period {period}.")
+    substitute_map[int(row["id"])] = None
+else:
+    sub_name = st.selectbox(
+        f"Substitute for Period {period} - {row['subject_name']}",
+        available["name"].tolist(),
+        key=f"substitute_{row['id']}"
+    )
 
-st.success(
-    f"Recommended Substitute: {recommended}"
-)
+    substitute_id = int(
+        available[available["name"] == sub_name]["id"].iloc[0]
+    )
 
-sub_name = st.selectbox(
-                    )
-                    substitute_id = int(available[available["name"] == sub_name]["id"].iloc[0])
-                    substitute_map[int(row["id"])] = substitute_id
+    substitute_map[int(row["id"])] = substitute_id
 
             if st.button("Submit Leave With Alteration Request", use_container_width=True):
                 if any(v is None for v in substitute_map.values()):
