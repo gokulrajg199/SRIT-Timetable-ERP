@@ -540,13 +540,10 @@ CREATE TABLE IF NOT EXISTS leave_alteration_requests(
     ("mech_hod", "hod123", "HOD", "MECH HOD", "MECH"),
 ]
 
-execute_many(
-    """
-    INSERT OR IGNORE INTO users(username, password, role, name, department)
-    VALUES(?,?,?,?,?)
-    """,
-    default_users
-)
+    cur.executemany("""
+        INSERT OR IGNORE INTO users(username, password, role, name, department)
+        VALUES(?,?,?,?,?)
+    """, default_users)
 
     conn.commit()
     conn.close()
