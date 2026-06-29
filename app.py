@@ -739,9 +739,13 @@ def login_page():
             else:
                 st.error("Invalid username or password")
 
-        st.info(
-            "Default logins: admin/admin123 | principal/principal123 | hod/hod123 | faculty/faculty123 | student/student123"
-        )
+      st.caption(
+    "Sri Ramakrishna Institute of Technology"
+)
+
+st.info(
+    "Please login using your authorized institutional credentials."
+)
         st.markdown("</div>", unsafe_allow_html=True)
 
 def allocate_block(grid, day, start_period, length, session, used_faculty, used_room):
