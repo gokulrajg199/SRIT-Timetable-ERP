@@ -736,11 +736,13 @@ def login_page():
 
                 st.success(f"Welcome {row['name']} ({row['role']})")
                 st.rerun()
-            else:
+                      else:
                 st.error("Invalid username or password")
-    st.info(
-    "Please login using your authorized institutional credentials."
-)
+
+        st.info(
+            "Please login using your authorized institutional credentials."
+        )
+
         st.markdown("</div>", unsafe_allow_html=True)
 
 def allocate_block(grid, day, start_period, length, session, used_faculty, used_room):
