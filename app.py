@@ -1195,6 +1195,7 @@ def sidebar_menu():
         "Academic Year",
         "Faculty",
         "Sections",
+        "Principal Analytics",
         "Infrastructure",
         "Subjects & Constraints",
         "Generate Timetable",
@@ -3329,7 +3330,51 @@ def user_management_page():
                 log_action("User Deleted", selected_username)
                 st.success("User deleted successfully.")
                 st.rerun()
+def principal_analytics_page():
+    st.subheader("📊 Principal Analytics Dashboard")
 
+    total_faculty = query_df("SELECT COUNT(*) AS cnt FROM faculty").iloc[0]["cnt"]
+    total_sections = query_df("SELECT COUNT(*) AS cnt FROM sections").iloc[0]["cnt"]
+    total_rooms = query_df("SELECT COUNT(*) AS cnt FROM rooms").iloc[0]["cnt"]
+    total_subjects = query_df("SELECT COUNT(*) AS cnt FROM subjects").iloc[0]["cnt"]
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Faculty", total_faculty)
+    c2.metric("Total Sections", total_sections)
+    c3.metric("Total Rooms / Labs", total_rooms)
+    c4.metric("Total Subjects", total_subjects)
+
+    st.markdown("---")
+
+    st.markdown("### Department-wise Faculty Count")
+
+    dept_faculty = query_df("""
+        SELECT department, COUNT(*) AS faculty_count
+        FROM faculty
+        GROUP BY department
+        ORDER BY faculty_count DESC
+    """)
+
+    if not dept_faculty.empty:
+        st.bar_chart(dept_faculty.set_index("department"))
+    else:
+        st.info("No faculty data available.")
+
+    st.markdown("### Faculty Workload Summary")
+
+    workload = query_df("""
+        SELECT 
+            f.name AS faculty_name,
+            f.department,
+            COUNT(t.id) AS total_hours
+        FROM faculty f
+        LEFT JOIN timetable t ON f.id = t.faculty_id
+        GROUP BY f.id, f.name, f.department
+        ORDER BY total_hours DESC
+    """)
+
+    st.dataframe(workload, use_container_width=True, hide_index=True)  
+    
 def main_app():
     page = sidebar_menu()
 
@@ -3343,6 +3388,8 @@ def main_app():
         faculty_page()
     elif page == "Sections":
         sections_page()
+    elif page == "Principal Analytics":
+        principal_analytics_page()
     elif page == "Infrastructure":
         rooms_page()
     elif page == "Subjects & Constraints":
