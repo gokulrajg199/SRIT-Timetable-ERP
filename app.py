@@ -522,6 +522,32 @@ CREATE TABLE IF NOT EXISTS leave_alteration_requests(
     created_at TEXT
 )
 """)
+    default_users = [
+    ("admin", "admin123", "Admin", "Administrator", "Administration"),
+    ("principal", "principal123", "Principal", "Principal", "Administration"),
+
+    ("cse_coord", "cse123", "Coordinator", "CSE Coordinator", "CSE"),
+    ("it_coord", "it123", "Coordinator", "IT Coordinator", "IT"),
+    ("aids_coord", "aids123", "Coordinator", "AI&DS Coordinator", "AI&DS"),
+    ("ece_coord", "ece123", "Coordinator", "ECE Coordinator", "ECE"),
+    ("eee_coord", "eee123", "Coordinator", "EEE Coordinator", "EEE"),
+    ("mech_coord", "mech123", "Coordinator", "MECH Coordinator", "MECH"),
+
+    ("cse_hod", "hod123", "HOD", "CSE HOD", "CSE"),
+    ("it_hod", "hod123", "HOD", "IT HOD", "IT"),
+    ("aids_hod", "hod123", "HOD", "AI&DS HOD", "AI&DS"),
+    ("ece_hod", "hod123", "HOD", "ECE HOD", "ECE"),
+    ("eee_hod", "hod123", "HOD", "EEE HOD", "EEE"),
+    ("mech_hod", "hod123", "HOD", "MECH HOD", "MECH"),
+]
+
+execute_many(
+    """
+    INSERT OR IGNORE INTO users(username, password, role, name, department)
+    VALUES(?,?,?,?,?)
+    """,
+    default_users
+)
 
     conn.commit()
     conn.close()
@@ -1195,6 +1221,7 @@ def sidebar_menu():
         "Excel Import",
         "Supabase Test",
         "Edit Records",
+        "User Management",
         "Settings"
     ]
 
@@ -3144,6 +3171,121 @@ def settings_page():
             st.success("Database restored successfully. Please refresh the app.")
             st.rerun()
 
+def user_management_page():
+    header()
+    st.subheader("User Management")
+
+    st.info("Admin can create login accounts for Principal, HOD, Coordinator, Faculty, and Student.")
+
+    with st.form("create_user_form"):
+        c1, c2, c3 = st.columns(3)
+
+        username = c1.text_input("Username")
+        password = c2.text_input("Password", type="password")
+        role = c3.selectbox(
+            "Role",
+            ["Admin", "Principal", "HOD", "Coordinator", "Faculty", "Student"]
+        )
+
+        c4, c5 = st.columns(2)
+        name = c4.text_input("Full Name")
+        department = c5.selectbox(
+            "Department",
+            ["Administration", "CSE", "IT", "AI&DS", "ECE", "EEE", "MECH"]
+        )
+
+        submitted = st.form_submit_button("Create User Login", use_container_width=True)
+
+        if submitted:
+            if not username or not password or not name:
+                st.error("Username, Password, and Full Name are required.")
+            else:
+                try:
+                    execute(
+                        "INSERT INTO users(username, password, role, name, department) VALUES(?,?,?,?,?)",
+                        (username.strip(), password.strip(), role, name.strip(), department)
+                    )
+                    log_action("User Created", f"{username} - {role} - {department}")
+                    st.success(f"User login created successfully for {name}.")
+                    st.rerun()
+                except sqlite3.IntegrityError:
+                    st.error("Username already exists. Please use another username.")
+
+    st.divider()
+
+    st.subheader("Existing Users")
+
+    users = query_df("""
+        SELECT id, username, role, name, department
+        FROM users
+        ORDER BY role, department, username
+    """)
+
+    st.dataframe(users, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    st.subheader("Update / Delete User")
+
+    if not users.empty:
+        user_options = users["username"].tolist()
+        selected_username = st.selectbox("Select User", user_options)
+
+        selected = users[users["username"] == selected_username].iloc[0]
+
+        with st.form("update_user_form"):
+            c1, c2, c3 = st.columns(3)
+
+            new_name = c1.text_input("Name", selected["name"])
+            new_role = c2.selectbox(
+                "Role",
+                ["Admin", "Principal", "HOD", "Coordinator", "Faculty", "Student"],
+                index=["Admin", "Principal", "HOD", "Coordinator", "Faculty", "Student"].index(selected["role"])
+                if selected["role"] in ["Admin", "Principal", "HOD", "Coordinator", "Faculty", "Student"] else 0
+            )
+            new_department = c3.selectbox(
+                "Department",
+                ["Administration", "CSE", "IT", "AI&DS", "ECE", "EEE", "MECH"],
+                index=["Administration", "CSE", "IT", "AI&DS", "ECE", "EEE", "MECH"].index(selected["department"])
+                if selected["department"] in ["Administration", "CSE", "IT", "AI&DS", "ECE", "EEE", "MECH"] else 0
+            )
+
+            new_password = st.text_input(
+                "New Password - leave blank to keep old password",
+                type="password"
+            )
+
+            update_btn = st.form_submit_button("Update User", use_container_width=True)
+
+            if update_btn:
+                if new_password.strip():
+                    execute(
+                        "UPDATE users SET password=?, role=?, name=?, department=? WHERE username=?",
+                        (new_password.strip(), new_role, new_name.strip(), new_department, selected_username)
+                    )
+                else:
+                    execute(
+                        "UPDATE users SET role=?, name=?, department=? WHERE username=?",
+                        (new_role, new_name.strip(), new_department, selected_username)
+                    )
+
+                log_action("User Updated", selected_username)
+                st.success("User updated successfully.")
+                st.rerun()
+
+        st.warning("Delete user only if the account is no longer required.")
+
+        if st.button("Delete Selected User", use_container_width=True):
+            if selected_username == st.session_state.get("username"):
+                st.error("You cannot delete your own logged-in account.")
+            elif selected_username == "admin":
+                st.error("Default admin account cannot be deleted.")
+            else:
+                execute("DELETE FROM users WHERE username=?", (selected_username,))
+                log_action("User Deleted", selected_username)
+                st.success("User deleted successfully.")
+                st.rerun()
+
 def main_app():
     page = sidebar_menu()
 
@@ -3201,6 +3343,8 @@ def main_app():
         supabase_test_page()
     elif page == "Edit Records":
         edit_records_page()
+    elif page == "User Management":
+        user_management_page()
     elif page == "Settings":
         settings_page()
 
