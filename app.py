@@ -3033,45 +3033,52 @@ def leave_alteration_page():
 
             st.markdown("### Select Substitute Faculty")
 
-            substitute_map = {}
+                      substitute_map = {}
 
             for _, row in affected.iterrows():
                 period = int(row["period"])
 
-          available = query_df("""
-    SELECT id, name
-    FROM faculty
-    WHERE id != ?
-    AND id NOT IN (
-        SELECT faculty_id FROM timetable
-        WHERE day=? AND period=?
-    )
-    AND id NOT IN (
-        SELECT faculty_id FROM faculty_unavailable
-        WHERE day=? AND period=?
-    )
-    ORDER BY name
-""", (
-    data["faculty_id"],
-    data["leave_day"], period,
-    data["leave_day"], period
-))
+                available = query_df("""
+                    SELECT id, name
+                    FROM faculty
+                    WHERE id != ?
+                    AND id NOT IN (
+                        SELECT faculty_id
+                        FROM timetable
+                        WHERE day=? AND period=?
+                    )
+                    AND id NOT IN (
+                        SELECT faculty_id
+                        FROM faculty_unavailable
+                        WHERE day=? AND period=?
+                    )
+                    ORDER BY name
+                """, (
+                    data["faculty_id"],
+                    data["leave_day"], period,
+                    data["leave_day"], period
+                ))
 
-if available.empty:
-    st.warning(f"No free substitute faculty available for Period {period}.")
-    substitute_map[int(row["id"])] = None
-else:
-    sub_name = st.selectbox(
-        f"Substitute for Period {period} - {row['subject_name']}",
-        available["name"].tolist(),
-        key=f"substitute_{row['id']}"
-    )
+                if available.empty:
+                    st.warning(
+                        f"No free substitute faculty available for Period {period}."
+                    )
+                    substitute_map[int(row["id"])] = None
 
-    substitute_id = int(
-        available[available["name"] == sub_name]["id"].iloc[0]
-    )
+                else:
+                    sub_name = st.selectbox(
+                        f"Substitute for Period {period} - {row['subject_name']}",
+                        available["name"].tolist(),
+                        key=f"substitute_{row['id']}"
+                    )
 
-    substitute_map[int(row["id"])] = substitute_id
+                    substitute_id = int(
+                        available[
+                            available["name"] == sub_name
+                        ]["id"].iloc[0]
+                    )
+
+                    substitute_map[int(row["id"])] = substitute_id
 
             if st.button("Submit Leave With Alteration Request", use_container_width=True):
                 if any(v is None for v in substitute_map.values()):
