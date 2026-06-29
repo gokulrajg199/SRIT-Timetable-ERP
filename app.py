@@ -738,10 +738,6 @@ def login_page():
                 st.rerun()
             else:
                 st.error("Invalid username or password")
-   st.caption(
-    "Sri Ramakrishna Institute of Technology"
-)
-
    st.info(
     "Please login using your authorized institutional credentials."
 )
