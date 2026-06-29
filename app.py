@@ -3033,7 +3033,7 @@ def leave_alteration_page():
 
             st.markdown("### Select Substitute Faculty")
 
-    substitute_map = {}
+            substitute_map = {}
 
             for _, row in affected.iterrows():
                 period = int(row["period"])
