@@ -257,7 +257,6 @@ def execute(query, params=()):
         "INSERT OR IGNORE INTO academic_years(year_name, semester_type, is_active) VALUES(?,?,?)",
         ("2026-2027", "Odd Semester", 1)
     )
-
     conn.commit()
     conn.close()
 
