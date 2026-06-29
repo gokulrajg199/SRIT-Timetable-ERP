@@ -738,7 +738,7 @@ def login_page():
                 st.rerun()
             else:
                 st.error("Invalid username or password")
-   st.info(
+    st.info(
     "Please login using your authorized institutional credentials."
 )
         st.markdown("</div>", unsafe_allow_html=True)
