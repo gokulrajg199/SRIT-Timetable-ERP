@@ -3038,7 +3038,7 @@ def leave_alteration_page():
             for _, row in affected.iterrows():
                 period = int(row["period"])
 
-               available = query_df("""
+            available = query_df("""
     SELECT
         f.id,
         f.name,
